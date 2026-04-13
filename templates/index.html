@@ -482,12 +482,12 @@
       <button class="tab-btn active" id="btn-explore" role="tab"
               aria-selected="true" aria-controls="tab-explore"
               onclick="switchTab('explore')">
-        <span class="tab-icon">📊</span> Exploring the Dataset
+        <span class="tab-icon"></span> Exploring the Dataset
       </button>
       <button class="tab-btn" id="btn-recommend" role="tab"
               aria-selected="false" aria-controls="tab-recommend"
               onclick="switchTab('recommend')">
-        <span class="tab-icon">🎵</span> Your Taste Profile
+        <span class="tab-icon"></span> Your Taste Profile
       </button>
     </nav>
 
@@ -501,13 +501,15 @@
         The five visualizations below reveal patterns in 2,000 Spotify tracks spanning
         1998–2020. Use the interactive controls to dig deeper — hover over data points
         for details, click genres to isolate them, or drag the year slider to watch
-        the top-artists chart update in real time.
+        the top-artists chart update in real time. After exploring the dataset, feel free to
+        try the 'Your Taste Profile' tab to get a tailored list of songs that match
+        your preferences.
       </p>
 
       <!-- ── Chart 1: Popularity Distribution by Genre (Altair / Vega-Lite) ─ -->
       <div class="viz-card">
         <h3>1 · Distribution of Popularity by Genre</h3>
-        <span class="viz-lib-badge">D3.js box plot (Altair-equivalent: mark_boxplot) · Interaction: click genre box to isolate</span>
+        <span class="viz-lib-badge">D3.js box plot · Interaction: click genre box to isolate</span>
         <div class="viz-chart-area" id="chart1"></div>
         <p class="viz-takeaway">
           <strong>Takeaway:</strong> Latin and rock lead in median popularity (both ~70),
@@ -605,25 +607,52 @@
         by representation to reduce the pop/hip-hop dominance.
       </div>
     </div> <!-- /.section.viz-section -->
-    </div> <!-- /.section.viz-section -->
     </div> <!-- /#tab-explore -->
 
     <!-- ================================================================
-         TAB 2: TASTE PROFILE + RECOMMENDATIONS (fully static / JS)
+         TAB 2: TASTE PROFILE + RECOMMENDATIONS
          ================================================================ -->
     <div id="tab-recommend" class="tab-panel hidden" role="tabpanel">
 
+    <form method="POST">
       <div class="section">
         <h2>Your Taste Profile</h2>
-        <div class="feature-grid" id="feature-grid">
-          <!-- Rendered by JS -->
+        <div class="feature-grid">
+          {% for feature in feature_columns %}
+          <div class="slider-group">
+            <label for="{{ feature }}">{{ display_questions[feature] }}</label>
+            <div class="slider-row">
+              <input
+                type="range"
+                id="{{ feature }}"
+                name="{{ feature }}"
+                min="0"
+                max="10"
+                step="1"
+                value="{{ current_values[feature] }}"
+                oninput="updateValue(this)"
+              >
+              <span class="slider-value">{{ current_values[feature] }}</span>
+            </div>
+          </div>
+          {% endfor %}
         </div>
       </div>
 
       <div class="section">
         <h2>Select Up to 3 Genres</h2>
-        <div class="genre-options" id="genre-options">
-          <!-- Rendered by JS -->
+        <div class="genre-options">
+          {% for genre in genres %}
+          <label>
+            <input
+              type="checkbox"
+              name="genres"
+              value="{{ genre }}"
+              {% if genre in selected_genres %}checked{% endif %}
+            >
+            {{ genre }}
+          </label>
+          {% endfor %}
         </div>
         <p class="helper-text">
           The recommender adds a genre bonus when a song matches one of your selected genres.
@@ -631,209 +660,119 @@
       </div>
 
       <div class="actions">
-        <button type="button" onclick="getRecommendations()">Get Recommendations</button>
+        <button type="submit">Get Recommendations</button>
       </div>
+    </form>
 
-      <div class="results" id="results-section">
-        <h2>Top Matching Tracks</h2>
-        <div id="results-grid">
-          <p class="empty-state">Submit your preferences to generate recommendations from the dataset.</p>
+    <div class="results">
+      <h2>Top Matching Tracks</h2>
+
+      {% if recommendations %}
+        <div class="results-grid">
+          {% for song in recommendations %}
+          <div class="result-card">
+            <h3>{{ loop.index }}. {{ song.song }}</h3>
+
+            <div class="tag-row">
+              <span class="tag">{{ song.genre }}</span>
+              <span class="tag">Match {{ '%.4f'|format(song.match_score) }}</span>
+              <span class="tag">Year {{ song.year }}</span>
+              <span class="tag">
+                {% if song.explicit == 1 %}
+                  Explicit
+                {% else %}
+                  Clean
+                {% endif %}
+              </span>
+            </div>
+
+            <div class="result-meta">
+              <strong>Artist:</strong> {{ song.artist }}<br>
+              <strong>Genre:</strong> {{ song.genre }}<br>
+              <strong>Year:</strong> {{ song.year }}<br>
+              <strong>Explicit:</strong>
+              {% if song.explicit == 1 %}
+                Yes
+              {% else %}
+                No
+              {% endif %}
+              <br>
+              <strong>Match Score:</strong> {{ '%.4f'|format(song.match_score) }}<br>
+              <strong>Popularity:</strong> {{ song.popularity }}<br>
+              <strong>Duration (ms):</strong> {{ song.duration_ms }}<br>
+              <strong>Danceability:</strong> {{ song.danceability }}<br>
+              <strong>Energy:</strong> {{ song.energy }}<br>
+              <strong>Loudness:</strong> {{ song.loudness }}<br>
+              <strong>Speechiness:</strong> {{ song.speechiness }}<br>
+              <strong>Acousticness:</strong> {{ song.acousticness }}<br>
+              <strong>Instrumentalness:</strong> {{ song.instrumentalness }}<br>
+              <strong>Liveness:</strong> {{ song.liveness }}<br>
+              <strong>Valence:</strong> {{ song.valence }}<br>
+              <strong>Tempo:</strong> {{ song.tempo }}
+            </div>
+          </div>
+          {% endfor %}
         </div>
-      </div>
-
+      {% else %}
+        <p class="empty-state">
+          Submit your preferences to generate recommendations from the dataset.
+        </p>
+      {% endif %}
+    </div> <!-- /.results -->
     </div> <!-- /#tab-recommend -->
   </div> <!-- /.app -->
 
   <script>
-    /* ═══════════════════════════════════════════════════════════════════════
-       STATIC CONFIG  (was injected by Flask/Jinja2, now hardcoded)
-    ═══════════════════════════════════════════════════════════════════════ */
-    const FEATURE_COLUMNS = [
-      'popularity','duration_ms','danceability','energy','loudness',
-      'speechiness','acousticness','instrumentalness','liveness','valence','tempo'
-    ];
-    const DISPLAY_QUESTIONS = {
-      popularity:       'How much do you want popular / mainstream songs?',
-      duration_ms:      'How much do you prefer longer songs?',
-      danceability:     'How much do you like danceable songs?',
-      energy:           'How much do you like high-energy songs?',
-      loudness:         'How much do you like louder, more intense songs?',
-      speechiness:      'How much do you like spoken-word / talk-heavy songs?',
-      acousticness:     'How much do you like acoustic songs?',
-      instrumentalness: 'How much do you like instrumental songs?',
-      liveness:         'How much do you like live-performance sounding songs?',
-      valence:          'How much do you like happier / more upbeat songs?',
-      tempo:            'How much do you like faster-paced songs?'
-    };
-
-    /* ═══════════════════════════════════════════════════════════════════════
-       TAB NAVIGATION
-    ═══════════════════════════════════════════════════════════════════════ */
+    /* ─────────────────────────────────────────────────────────────────────
+       Tab navigation
+    ───────────────────────────────────────────────────────────────────── */
     function switchTab(name) {
-      ['explore','recommend'].forEach(key => {
-        const panel = document.getElementById('tab-' + key);
-        const btn   = document.getElementById('btn-' + key);
-        const active = key === name;
-        panel.classList.toggle('hidden', !active);
-        btn.classList.toggle('active', active);
-        btn.setAttribute('aria-selected', active);
+      const panels = { explore: 'tab-explore', recommend: 'tab-recommend' };
+      const btns   = { explore: 'btn-explore', recommend: 'btn-recommend' };
+
+      Object.keys(panels).forEach(key => {
+        const panel = document.getElementById(panels[key]);
+        const btn   = document.getElementById(btns[key]);
+        if (key === name) {
+          panel.classList.remove('hidden');
+          btn.classList.add('active');
+          btn.setAttribute('aria-selected', 'true');
+        } else {
+          panel.classList.add('hidden');
+          btn.classList.remove('active');
+          btn.setAttribute('aria-selected', 'false');
+        }
       });
     }
 
-    /* ═══════════════════════════════════════════════════════════════════════
-       ORIGINAL APP JS (unchanged logic)
-    ═══════════════════════════════════════════════════════════════════════ */
+    // If the page loaded with recommendations (POST result), open the
+    // Taste Profile tab automatically so the user sees their results.
+    (function () {
+      const hasResults = document.querySelector('.result-card');
+      if (hasResults) switchTab('recommend');
+    })();
+
+    /* ─────────────────────────────────────────────────────────────────────
+       Original app JS (unchanged)
+    ───────────────────────────────────────────────────────────────────── */
     function updateValue(slider) {
       slider.nextElementSibling.textContent = slider.value;
     }
 
-    /* ═══════════════════════════════════════════════════════════════════════
-       STATIC RECOMMENDER  (port of app.py logic)
-    ═══════════════════════════════════════════════════════════════════════ */
-    let _allSongs = null;  // populated after data fetch
-
-    function computeMatchScore(song, userProfile, selectedGenres, genreBonus = 0.08) {
-      let totalDiff = 0;
-      for (const feat of FEATURE_COLUMNS) {
-        const songVal = song[feat + '_norm'] ?? 0;
-        const userVal = userProfile[feat + '_norm'] ?? 0;
-        totalDiff += Math.abs(songVal - userVal);
-      }
-      let score = 1 - (totalDiff / FEATURE_COLUMNS.length);
-      if (selectedGenres.length > 0) {
-        const songGenres = String(song.genre).split(',').map(g => g.trim());
-        if (selectedGenres.some(g => songGenres.includes(g))) {
-          score += genreBonus;
-        }
-      }
-      return Math.round(score * 10000) / 10000;
-    }
-
-    function recommendTracks(songs, userProfile, selectedGenres, topN = 5) {
-      // Score all songs
-      const scored = songs.map(s => ({
-        ...s,
-        match_score: computeMatchScore(s, userProfile, selectedGenres)
-      }));
-
-      const used = new Set();
-      const guaranteed = [];
-
-      // Guarantee at least one top song per selected genre
-      if (selectedGenres.length > 0) {
-        for (const genre of selectedGenres) {
-          const genreSongs = scored
-            .filter(s => String(s.genre).split(',').map(g=>g.trim()).includes(genre))
-            .sort((a, b) => b.match_score - a.match_score);
-          if (genreSongs.length > 0) {
-            const top = genreSongs[0];
-            const key = top.song + '|' + top.artist;
-            if (!used.has(key)) {
-              used.add(key);
-              guaranteed.push(top);
-            }
-          }
-        }
-      }
-
-      // Fill remaining slots from overall top scorers
-      const remaining = scored
-        .filter(s => !used.has(s.song + '|' + s.artist))
-        .sort((a, b) => b.match_score - a.match_score);
-
-      const combined = [...guaranteed, ...remaining.slice(0, topN - guaranteed.length)];
-      return combined
-        .sort((a, b) => b.match_score - a.match_score)
-        .slice(0, topN);
-    }
-
-    function getRecommendations() {
-      if (!_allSongs) {
-        alert('Data is still loading, please try again in a moment.');
-        return;
-      }
-
-      // Read slider values
-      const userProfile = {};
-      for (const feat of FEATURE_COLUMNS) {
-        const raw = parseFloat(document.getElementById('slider-' + feat).value);
-        userProfile[feat + '_norm'] = Math.round((raw / 10) * 100) / 100;
-      }
-
-      // Read selected genres (max 3)
-      const selectedGenres = Array.from(
-        document.querySelectorAll('#genre-options input[type=checkbox]:checked')
-      ).map(cb => cb.value).slice(0, 3);
-
-      const results = recommendTracks(_allSongs, userProfile, selectedGenres, 5);
-      renderResults(results);
-    }
-
-    function renderResults(tracks) {
-      const grid = document.getElementById('results-grid');
-      if (!tracks || tracks.length === 0) {
-        grid.innerHTML = '<p class="empty-state">No matching tracks found.</p>';
-        return;
-      }
-      grid.innerHTML = tracks.map((s, i) => `
-        <div class="result-card">
-          <h3>${i + 1}. ${s.song}</h3>
-          <div class="tag-row">
-            <span class="tag">${s.genre}</span>
-            <span class="tag">Match ${s.match_score.toFixed(4)}</span>
-            <span class="tag">Year ${s.year}</span>
-            <span class="tag">${String(s.explicit).toLowerCase()==='true'||s.explicit===1||s.explicit==='1' ? 'Explicit' : 'Clean'}</span>
-          </div>
-          <div class="result-meta">
-            <strong>Artist:</strong> ${s.artist}<br>
-            <strong>Genre:</strong> ${s.genre}<br>
-            <strong>Year:</strong> ${s.year}<br>
-            <strong>Explicit:</strong> ${String(s.explicit).toLowerCase()==='true'||s.explicit===1||s.explicit==='1' ? 'Yes' : 'No'}<br>
-            <strong>Match Score:</strong> ${s.match_score.toFixed(4)}<br>
-            <strong>Popularity:</strong> ${s.popularity}<br>
-            <strong>Duration (ms):</strong> ${s.duration_ms}<br>
-            <strong>Danceability:</strong> ${s.danceability}<br>
-            <strong>Energy:</strong> ${s.energy}<br>
-            <strong>Loudness:</strong> ${s.loudness}<br>
-            <strong>Speechiness:</strong> ${s.speechiness}<br>
-            <strong>Acousticness:</strong> ${s.acousticness}<br>
-            <strong>Instrumentalness:</strong> ${s.instrumentalness}<br>
-            <strong>Liveness:</strong> ${s.liveness}<br>
-            <strong>Valence:</strong> ${s.valence}<br>
-            <strong>Tempo:</strong> ${s.tempo}
-          </div>
-        </div>`).join('');
-    }
-
-    function buildTasteForm(genres) {
-      // Sliders
-      const grid = document.getElementById('feature-grid');
-      grid.innerHTML = FEATURE_COLUMNS.map(feat => `
-        <div class="slider-group">
-          <label for="slider-${feat}">${DISPLAY_QUESTIONS[feat]}</label>
-          <div class="slider-row">
-            <input type="range" id="slider-${feat}" name="${feat}"
-              min="0" max="10" step="1" value="5" oninput="updateValue(this)">
-            <span class="slider-value">5</span>
-          </div>
-        </div>`).join('');
-
-      // Genre checkboxes
-      const opts = document.getElementById('genre-options');
-      opts.innerHTML = genres.map(g => `
-        <label>
-          <input type="checkbox" name="genres" value="${g}"> ${g}
-        </label>`).join('');
-
-      // Enforce max 3 genres
-      opts.addEventListener('change', () => {
-        const checked = opts.querySelectorAll('input:checked');
+    document.querySelectorAll('input[name="genres"]').forEach((checkbox) => {
+      checkbox.addEventListener('change', () => {
+        const checked = document.querySelectorAll('input[name="genres"]:checked');
         if (checked.length > 3) {
+          checkbox.checked = false;
           alert('Please select no more than 3 genres.');
-          event.target.checked = false;
         }
       });
-    }
+    });
+
+    /* ─────────────────────────────────────────────────────────────────────
+       DS4200 Visualizations
+       All five charts are rendered after fetching /api/viz-data
+    ───────────────────────────────────────────────────────────────────── */
 
     // Shared tooltip helpers
     const _tip = document.getElementById('viz-tooltip');
@@ -870,26 +809,16 @@
     // ────────────────────────────────────────────────────────────────────
     // Fetch data then render all five charts
     // ────────────────────────────────────────────────────────────────────
-    function initCharts(data) {
-      buildTasteForm(data.genres);
-      _allSongs = data.songs;
-      renderChart1(data.genre_popularity);
-      renderChart2(data.songs);
-      renderChart3(data.correlation, data.numeric_cols);
-      renderChart4(data.artist_year, data.years);
-      renderChart5(data.energy_time);
-    }
-
-    // Try static file first (GitHub Pages), fall back to Flask API (local dev)
-    fetch('data/viz_data.json')
-      .then(r => { if (!r.ok) throw new Error('static file not found'); return r.json(); })
-      .then(initCharts)
-      .catch(() => {
-        fetch('/api/viz-data')
-          .then(r => r.json())
-          .then(initCharts)
-          .catch(err => console.error('Could not load viz data:', err));
-      });
+    fetch('/api/viz-data')
+      .then(r => r.json())
+      .then(data => {
+        renderChart1(data.genre_popularity);
+        renderChart2(data.songs);
+        renderChart3(data.correlation, data.numeric_cols);
+        renderChart4(data.artist_year, data.years);
+        renderChart5(data.energy_time);
+      })
+      .catch(err => console.error('Viz data fetch error:', err));
 
 
     // ════════════════════════════════════════════════════════════════════
@@ -1521,9 +1450,6 @@
         config: { background: 'transparent' }
       });
     }
-  </script>
-</body>
-</html>
   </script>
 </body>
 </html>
