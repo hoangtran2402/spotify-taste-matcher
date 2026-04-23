@@ -75,6 +75,11 @@ def get_prepared_data():
     if _cached_df is None:
         df = load_data("songs_normalize.csv")
         df = clean_data(df)
+
+        # Remove 2020 because it may not represent a full year
+        if "year" in df.columns:
+            df = df[df["year"] <= 2019]
+
         df = normalize_features(df)
         _cached_df = df
     return _cached_df
@@ -228,23 +233,33 @@ def viz_data():
         lambda x: str(x).split(",")[0].strip() if pd.notna(x) else "Unknown"
     )
 
-    # ── Chart 1 & Chart 2: per-song attributes ─────────────────────────────
-    songs_cols = ["song", "artist", "danceability", "energy", "popularity",
-                  "primary_genre", "year", "valence", "acousticness"]
+    # Chart 1 + Chart 3 song-level data
+    songs_cols = [
+        "song", "artist", "danceability", "energy", "popularity",
+        "primary_genre", "year", "valence", "acousticness"
+    ]
     songs_sample = df[songs_cols].sample(n=min(600, len(df)), random_state=42)
     songs_data = songs_sample.to_dict(orient="records")
 
-    # ── Chart 1 only: full genre-popularity pairs for box plot ─────────────
+    # Chart 1
     genre_pop = (
         df[["primary_genre", "popularity"]]
         .rename(columns={"primary_genre": "genre"})
         .to_dict(orient="records")
     )
 
-    # ── Chart 3: Pearson correlation matrix ────────────────────────────────
+    # Correlation heatmap
     numeric_cols = [
-        "popularity", "danceability", "energy", "loudness", "speechiness",
-        "acousticness", "instrumentalness", "liveness", "valence", "tempo"
+        "popularity",
+        "danceability",
+        "energy",
+        "loudness",
+        "speechiness",
+        "acousticness",
+        "instrumentalness",
+        "liveness",
+        "valence",
+        "tempo"
     ]
     corr_matrix = df[numeric_cols].corr().round(3)
     corr_data = [
@@ -253,7 +268,7 @@ def viz_data():
         for c in numeric_cols
     ]
 
-    # ── Chart 4: track count per artist per year ───────────────────────────
+    # Chart 4
     artist_year = (
         df.groupby(["year", "artist"])
         .size()
@@ -262,15 +277,19 @@ def viz_data():
     )
     artist_year_data = artist_year.to_dict(orient="records")
 
-    # ── Chart 5: mean energy per year ──────────────────────────────────────
-    energy_time = (
-        df.groupby("year")["energy"]
-        .mean()
-        .reset_index()
-        .rename(columns={"energy": "mean_energy"})
-        .round(4)
-    )
-    energy_time_data = energy_time.to_dict(orient="records")
+    # Chart 5 - multiple selectable metrics
+    metric_time = {}
+    metric_columns = ["energy", "danceability", "valence", "acousticness"]
+
+    for metric in metric_columns:
+        metric_df = (
+            df.groupby("year")[metric]
+            .mean()
+            .reset_index()
+            .rename(columns={metric: "value"})
+            .round(4)
+        )
+        metric_time[metric] = metric_df.to_dict(orient="records")
 
     payload = {
         "songs": songs_data,
@@ -278,7 +297,7 @@ def viz_data():
         "correlation": corr_data,
         "numeric_cols": numeric_cols,
         "artist_year": artist_year_data,
-        "energy_time": energy_time_data,
+        "metric_time": metric_time,
         "years": sorted(df["year"].dropna().unique().astype(int).tolist()),
     }
     return app.response_class(
