@@ -6,11 +6,9 @@
   <title>Spotify Taste Matcher</title>
 
   <!-- ── Visualization libraries (DS4200) ─────────────────────────────── -->
-  <!-- Vega / Vega-Lite / Vega-Embed  →  renders Altair-generated specs   -->
   <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
   <script src="https://cdn.jsdelivr.net/npm/vega-lite@5"></script>
   <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
-  <!-- D3.js v7 -->
   <script src="https://d3js.org/d3.v7.min.js"></script>
 
   <style>
@@ -264,7 +262,6 @@
       max-width: 100%;
     }
 
-    /* vega-embed container sizing */
     .vega-embed {
       width: 100% !important;
     }
@@ -288,15 +285,16 @@
       color: #1db954;
     }
 
-    /* Slider row for Chart 4 */
-    .year-slider-row {
+    .year-slider-row,
+    .metric-control-row {
       display: flex;
       align-items: center;
       gap: 14px;
       margin-top: 14px;
     }
 
-    .year-slider-row label {
+    .year-slider-row label,
+    .metric-control-row label {
       color: #bdbdbd;
       font-size: 0.9rem;
       white-space: nowrap;
@@ -307,6 +305,15 @@
       accent-color: #1db954;
     }
 
+    .metric-control-row select {
+      background: rgba(255,255,255,0.08);
+      color: #ffffff;
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 0.9rem;
+    }
+
     #year-display {
       font-weight: bold;
       color: #1db954;
@@ -314,7 +321,6 @@
       text-align: right;
     }
 
-    /* Genre filter buttons for Chart 2 */
     .genre-filter-row {
       display: flex;
       flex-wrap: wrap;
@@ -339,7 +345,6 @@
       color: #fff;
     }
 
-    /* Shared D3 tooltip */
     #viz-tooltip {
       position: fixed;
       background: rgba(10,10,10,0.92);
@@ -356,7 +361,6 @@
       box-shadow: 0 4px 20px rgba(0,0,0,0.5);
     }
 
-    /* Summary section */
     .findings-box {
       background: rgba(29,185,84,0.06);
       border: 1px solid rgba(29,185,84,0.25);
@@ -373,8 +377,6 @@
       color: #1db954;
       font-size: 1rem;
     }
-
-    /* ── Tab bar & panels ──────────────────────────────────────────────── */
 
     .tab-bar {
       display: flex;
@@ -467,7 +469,6 @@
 </head>
 <body>
 
-  <!-- Shared tooltip for D3 charts -->
   <div id="viz-tooltip"></div>
 
   <div class="app">
@@ -477,7 +478,6 @@
       and generate recommendations based on your similarity score.
     </p>
 
-    <!-- ── Tab menu bar ─────────────────────────────────────────────── -->
     <nav class="tab-bar" role="tablist">
       <button class="tab-btn active" id="btn-explore" role="tab"
               aria-selected="true" aria-controls="tab-explore"
@@ -491,241 +491,217 @@
       </button>
     </nav>
 
-    <!-- ================================================================
-         TAB 1: DATA VISUALIZATIONS
-         ================================================================ -->
     <div id="tab-explore" class="tab-panel" role="tabpanel">
-    <div class="section viz-section">
-      <h2>Exploring the Dataset</h2>
-      <p class="viz-intro">
-        The five visualizations below reveal patterns in 2,000 Spotify tracks spanning
-        1998–2020. Use the interactive controls to dig deeper — hover over data points
-        for details, click genres to isolate them, or drag the year slider to watch
-        the top-artists chart update in real time. After exploring the dataset, feel free to
-        try the 'Your Taste Profile' tab to get a tailored list of songs that match
-        your preferences.
-      </p>
-
-      <!-- ── Chart 1: Popularity Distribution by Genre (Altair / Vega-Lite) ─ -->
-      <div class="viz-card">
-        <h3>1 · Distribution of Popularity by Genre</h3>
-        <span class="viz-lib-badge">D3.js box plot · Interaction: click genre box to isolate</span>
-        <div class="viz-chart-area" id="chart1"></div>
-        <p class="viz-takeaway">
-          <strong>Takeaway:</strong> Latin and rock lead in median popularity (both ~70),
-          followed closely by hip-hop and R&B (~65–68). Pop sits mid-pack despite being
-          the most represented genre in the dataset, and it has the widest spread — outliers
-          extend all the way down to near 0, reflecting the many obscure tracks in the catalog
-          alongside mainstream hits. Dance/Electronic and country have the lowest medians
-          (~55), suggesting they are underrepresented in the chart-hit tier of this dataset.
-          <em>Click any box to isolate that genre; click again to reset.</em>
+      <div class="section viz-section">
+        <h2>Exploring the Dataset</h2>
+        <p class="viz-intro">
+          The five visualizations below reveal patterns in 2,000 Spotify tracks spanning
+          1998–2019. Use the interactive controls to dig deeper — hover over data points
+          for details, click genres to isolate them, or drag the year slider to watch
+          the top-artists chart update in real time. After exploring the dataset, feel free to
+          try the 'Your Taste Profile' tab to get a tailored list of songs that match
+          your preferences.
         </p>
-      </div>
 
-      <!-- ── Chart 2: Energy vs. Danceability (D3) ─────────────────────── -->
-      <div class="viz-card">
-        <h3>2 · Energy vs. Danceability</h3>
-        <span class="viz-lib-badge">D3.js · Interaction: hover tooltip + genre filter buttons</span>
-        <div class="genre-filter-row" id="scatter-filters"></div>
-        <div class="viz-chart-area" id="chart2"></div>
-        <p class="viz-takeaway">
-          <strong>Takeaway:</strong> Energy and danceability are mildly positively correlated,
-          but the relationship is loose — many high-energy rock tracks score low on danceability,
-          while hip-hop clusters in the upper-right (high on both). The genre filter buttons
-          let you isolate one genre at a time to compare distributions directly.
-          Circle size encodes popularity: larger circles are more popular songs.
-        </p>
-      </div>
-
-      <!-- ── Chart 3: Correlation Heatmap (D3) ────────────────────────── -->
-      <div class="viz-card">
-        <h3>3 · Feature Correlation Heatmap</h3>
-        <span class="viz-lib-badge">D3.js · Interaction: hover to see exact correlation value</span>
-        <div class="viz-chart-area" id="chart3"></div>
-        <p class="viz-takeaway">
-          <strong>Takeaway:</strong> Energy and loudness share the strongest positive
-          correlation (r = 0.65), confirming that louder mixes are engineered for intensity.
-          Acousticness is negatively correlated with both energy (r = −0.45) and loudness
-          (r = −0.31) — acoustic recordings are inherently quieter and softer. Valence and
-          danceability are moderately correlated (r = 0.40), meaning happier-sounding songs
-          tend to be more danceable. Notably, popularity is nearly uncorrelated with every
-          other feature (all r values within ±0.05), suggesting chart success in this
-          dataset is not strongly predicted by any single audio attribute alone.
-        </p>
-      </div>
-
-      <!-- ── Chart 4: Top Artists by Year (D3 + Slider) ────────────────── -->
-      <div class="viz-card">
-        <h3>4 · Top 10 Artists by Track Count per Year</h3>
-        <span class="viz-lib-badge">D3.js · Interaction: year slider animates bar chart</span>
-        <div class="viz-chart-area" id="chart4"></div>
-        <div class="year-slider-row">
-          <label for="year-slider">Year:</label>
-          <input type="range" id="year-slider" min="1998" max="2020" step="1" value="2010">
-          <span id="year-display">2010</span>
+        <div class="viz-card">
+          <h3>1 · Distribution of Popularity by Genre</h3>
+          <span class="viz-lib-badge">D3.js box plot · Interaction: click genre box to isolate</span>
+          <div class="viz-chart-area" id="chart1"></div>
+          <p class="viz-takeaway">
+            <strong>Takeaway:</strong> Latin and rock lead in median popularity (both ~70),
+            followed closely by hip-hop and R&B (~65–68). Pop sits mid-pack despite being
+            the most represented genre in the dataset, and it has the widest spread — outliers
+            extend all the way down to near 0, reflecting the many obscure tracks in the catalog
+            alongside mainstream hits. Dance/Electronic and country have the lowest medians
+            (~55), suggesting they are underrepresented in the chart-hit tier of this dataset.
+            <em>Click any box to isolate that genre; click again to reset.</em>
+          </p>
         </div>
-        <p class="viz-takeaway">
-          <strong>Takeaway:</strong> Dataset coverage is uneven across years. Early 2000s
-          charts are dominated by a handful of pop mega-acts (Destiny's Child, Britney Spears,
-          Eminem). By the 2010s the roster diversifies — Drake and Taylor Swift appear
-          repeatedly but never as overwhelmingly as early pop monopolies. Drag the slider
-          to trace any artist's rise and fall across the two-decade window.
-        </p>
-      </div>
 
-      <!-- ── Chart 5: Average Energy Over Time (Altair / Vega-Lite) ────── -->
-      <div class="viz-card">
-        <h3>5 · Average Track Energy Over Time (1998–2020)</h3>
-        <span class="viz-lib-badge">Altair / Vega-Lite · Interaction: hover nearest point for exact value</span>
-        <div class="viz-chart-area" id="chart5"></div>
-        <p class="viz-takeaway">
-          <strong>Takeaway:</strong> Average energy starts very low in 1998 (~0.45) — likely
-          because the dataset has few tracks from that year — then jumps sharply to ~0.74
-          by 1999 and stays elevated through the 2000s. It peaks around 2012–2013 at ~0.78,
-          consistent with the loudness-war era and EDM's mainstream breakthrough. After
-          that, energy dips gradually, reaching a low of ~0.65 around 2018, before a
-          sharp spike back to ~0.79 in 2020, possibly driven by the resurgence of
-          high-production pop and hyperpop. Hover over any point to see the exact mean value.
-        </p>
-      </div>
+        <div class="viz-card">
+          <h3>2 · Feature Correlation Heatmap</h3>
+          <span class="viz-lib-badge">D3.js · Interaction: hover to see exact correlation value</span>
+          <div class="viz-chart-area" id="chart3"></div>
+          <p class="viz-takeaway">
+            <strong>Takeaway:</strong> This heatmap helps decide which features are most worth comparing in a pairwise plot.
+            Since energy and danceability show only a very mild relationship, it makes more sense to use a stronger pair later.
+            Here, danceability and valence stand out as a better choice for the scatter plot because they show a clearer positive trend.
+          </p>
+        </div>
 
-      <!-- ── Findings Summary ──────────────────────────────────────────── -->
-      <div class="findings-box">
-        <h4>Summary of Findings</h4>
-        Pop and hip-hop together account for over 85% of the dataset, yet latin and rock
-        tracks actually score higher median popularity — suggesting those genres punch above
-        their weight in chart performance despite smaller representation. The moderate
-        energy–loudness correlation (r = 0.65) confirms that users rating "energy" highly
-        will tend to receive loud, produced tracks, while acousticness acts as a near-inverse
-        proxy (r = −0.45 with energy). Crucially, popularity is almost entirely uncorrelated
-        with every audio feature, meaning the recommender's feature-matching approach cannot
-        reliably reproduce what makes a track a hit — only what makes it <em>sound</em>
-        similar. The sharp 2020 energy spike is an outlier worth investigating: if the
-        dataset oversamples a specific high-energy subgenre for that year it could bias
-        recommendations for users who select recent tracks. Future work could normalise
-        within yearly cohorts, add a decade filter to the taste profile, and weight genres
-        by representation to reduce the pop/hip-hop dominance.
-      </div>
-    </div> <!-- /.section.viz-section -->
-    </div> <!-- /#tab-explore -->
+        <div class="viz-card">
+          <h3>3 · Danceability vs. Valence</h3>
+          <span class="viz-lib-badge">D3.js · Interaction: hover tooltip + genre filter buttons</span>
+          <div class="genre-filter-row" id="scatter-filters"></div>
+          <div class="viz-chart-area" id="chart2"></div>
+          <p class="viz-takeaway">
+            <strong>Takeaway:</strong> Danceability and valence show a clearer positive relationship than energy and danceability,
+            so this pairing better highlights how more upbeat songs also tend to be more danceable. The fitted regression line
+            makes the overall trend easier to see, and circle size represents popularity, with the size legend shown on the right.
+          </p>
+        </div>
 
-    <!-- ================================================================
-         TAB 2: TASTE PROFILE + RECOMMENDATIONS
-         ================================================================ -->
+        <div class="viz-card">
+          <h3>4 · Top 10 Artists by Track Count per Year</h3>
+          <span class="viz-lib-badge">D3.js · Interaction: year slider animates bar chart</span>
+          <div class="viz-chart-area" id="chart4"></div>
+          <div class="year-slider-row">
+            <label for="year-slider">Year:</label>
+            <input type="range" id="year-slider" min="1998" max="2019" step="1" value="2010">
+            <span id="year-display">2010</span>
+          </div>
+          <p class="viz-takeaway">
+            <strong>Takeaway:</strong> Dataset coverage is uneven across years. Early 2000s
+            charts are dominated by a handful of pop mega-acts (Destiny's Child, Britney Spears,
+            Eminem). By the 2010s the roster diversifies — Drake and Taylor Swift appear
+            repeatedly but never as overwhelmingly as early pop monopolies. Drag the slider
+            to trace any artist's rise and fall across the two-decade window.
+          </p>
+        </div>
+
+        <div class="viz-card">
+          <h3>5 · Average Audio Metric Over Time (1998–2019)</h3>
+          <span class="viz-lib-badge">Altair / Vega-Lite · Interaction: choose a metric + hover for exact value</span>
+          <div class="metric-control-row">
+            <label for="metric-select">Metric:</label>
+            <select id="metric-select">
+              <option value="energy">Energy</option>
+              <option value="danceability">Danceability</option>
+              <option value="valence">Valence</option>
+              <option value="acousticness">Acousticness</option>
+            </select>
+          </div>
+          <div class="viz-chart-area" id="chart5"></div>
+          <p class="viz-takeaway">
+            <strong>Takeaway:</strong> This chart is interactive so you can switch between different metrics rather than focusing only on energy.
+            That makes it easier to compare whether the main pattern over time is specific to energy or also appears in related features like
+            danceability, valence, or acousticness.
+          </p>
+        </div>
+
+        <div class="findings-box">
+          <h4>Summary of Findings</h4>
+          Pop and hip-hop together account for over 85% of the dataset, yet latin and rock
+          tracks actually score higher median popularity — suggesting those genres punch above
+          their weight in chart performance despite smaller representation. The correlation
+          heatmap is useful for selecting better pairwise comparisons, since some feature pairs
+          such as energy and danceability are only weakly related, while danceability and valence
+          provide a clearer trend. The interactive metric selector in the final chart also avoids
+          overemphasizing energy alone and lets viewers compare multiple audio attributes over time.
+        </div>
+      </div>
+    </div>
+
     <div id="tab-recommend" class="tab-panel hidden" role="tabpanel">
+      <form method="POST">
+        <div class="section">
+          <h2>Your Taste Profile</h2>
+          <div class="feature-grid">
+            {% for feature in feature_columns %}
+            <div class="slider-group">
+              <label for="{{ feature }}">{{ display_questions[feature] }}</label>
+              <div class="slider-row">
+                <input
+                  type="range"
+                  id="{{ feature }}"
+                  name="{{ feature }}"
+                  min="0"
+                  max="10"
+                  step="1"
+                  value="{{ current_values[feature] }}"
+                  oninput="updateValue(this)"
+                >
+                <span class="slider-value">{{ current_values[feature] }}</span>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
 
-    <form method="POST">
-      <div class="section">
-        <h2>Your Taste Profile</h2>
-        <div class="feature-grid">
-          {% for feature in feature_columns %}
-          <div class="slider-group">
-            <label for="{{ feature }}">{{ display_questions[feature] }}</label>
-            <div class="slider-row">
+        <div class="section">
+          <h2>Select Up to 3 Genres</h2>
+          <div class="genre-options">
+            {% for genre in genres %}
+            <label>
               <input
-                type="range"
-                id="{{ feature }}"
-                name="{{ feature }}"
-                min="0"
-                max="10"
-                step="1"
-                value="{{ current_values[feature] }}"
-                oninput="updateValue(this)"
+                type="checkbox"
+                name="genres"
+                value="{{ genre }}"
+                {% if genre in selected_genres %}checked{% endif %}
               >
-              <span class="slider-value">{{ current_values[feature] }}</span>
-            </div>
+              {{ genre }}
+            </label>
+            {% endfor %}
           </div>
-          {% endfor %}
+          <p class="helper-text">
+            The recommender adds a genre bonus when a song matches one of your selected genres.
+          </p>
         </div>
-      </div>
 
-      <div class="section">
-        <h2>Select Up to 3 Genres</h2>
-        <div class="genre-options">
-          {% for genre in genres %}
-          <label>
-            <input
-              type="checkbox"
-              name="genres"
-              value="{{ genre }}"
-              {% if genre in selected_genres %}checked{% endif %}
-            >
-            {{ genre }}
-          </label>
-          {% endfor %}
+        <div class="actions">
+          <button type="submit">Get Recommendations</button>
         </div>
-        <p class="helper-text">
-          The recommender adds a genre bonus when a song matches one of your selected genres.
-        </p>
-      </div>
+      </form>
 
-      <div class="actions">
-        <button type="submit">Get Recommendations</button>
-      </div>
-    </form>
+      <div class="results">
+        <h2>Top Matching Tracks</h2>
 
-    <div class="results">
-      <h2>Top Matching Tracks</h2>
+        {% if recommendations %}
+          <div class="results-grid">
+            {% for song in recommendations %}
+            <div class="result-card">
+              <h3>{{ loop.index }}. {{ song.song }}</h3>
 
-      {% if recommendations %}
-        <div class="results-grid">
-          {% for song in recommendations %}
-          <div class="result-card">
-            <h3>{{ loop.index }}. {{ song.song }}</h3>
+              <div class="tag-row">
+                <span class="tag">{{ song.genre }}</span>
+                <span class="tag">Match {{ '%.4f'|format(song.match_score) }}</span>
+                <span class="tag">Year {{ song.year }}</span>
+                <span class="tag">
+                  {% if song.explicit == 1 %}
+                    Explicit
+                  {% else %}
+                    Clean
+                  {% endif %}
+                </span>
+              </div>
 
-            <div class="tag-row">
-              <span class="tag">{{ song.genre }}</span>
-              <span class="tag">Match {{ '%.4f'|format(song.match_score) }}</span>
-              <span class="tag">Year {{ song.year }}</span>
-              <span class="tag">
+              <div class="result-meta">
+                <strong>Artist:</strong> {{ song.artist }}<br>
+                <strong>Genre:</strong> {{ song.genre }}<br>
+                <strong>Year:</strong> {{ song.year }}<br>
+                <strong>Explicit:</strong>
                 {% if song.explicit == 1 %}
-                  Explicit
+                  Yes
                 {% else %}
-                  Clean
+                  No
                 {% endif %}
-              </span>
+                <br>
+                <strong>Match Score:</strong> {{ '%.4f'|format(song.match_score) }}<br>
+                <strong>Popularity:</strong> {{ song.popularity }}<br>
+                <strong>Duration (ms):</strong> {{ song.duration_ms }}<br>
+                <strong>Danceability:</strong> {{ song.danceability }}<br>
+                <strong>Energy:</strong> {{ song.energy }}<br>
+                <strong>Loudness:</strong> {{ song.loudness }}<br>
+                <strong>Speechiness:</strong> {{ song.speechiness }}<br>
+                <strong>Acousticness:</strong> {{ song.acousticness }}<br>
+                <strong>Instrumentalness:</strong> {{ song.instrumentalness }}<br>
+                <strong>Liveness:</strong> {{ song.liveness }}<br>
+                <strong>Valence:</strong> {{ song.valence }}<br>
+                <strong>Tempo:</strong> {{ song.tempo }}
+              </div>
             </div>
-
-            <div class="result-meta">
-              <strong>Artist:</strong> {{ song.artist }}<br>
-              <strong>Genre:</strong> {{ song.genre }}<br>
-              <strong>Year:</strong> {{ song.year }}<br>
-              <strong>Explicit:</strong>
-              {% if song.explicit == 1 %}
-                Yes
-              {% else %}
-                No
-              {% endif %}
-              <br>
-              <strong>Match Score:</strong> {{ '%.4f'|format(song.match_score) }}<br>
-              <strong>Popularity:</strong> {{ song.popularity }}<br>
-              <strong>Duration (ms):</strong> {{ song.duration_ms }}<br>
-              <strong>Danceability:</strong> {{ song.danceability }}<br>
-              <strong>Energy:</strong> {{ song.energy }}<br>
-              <strong>Loudness:</strong> {{ song.loudness }}<br>
-              <strong>Speechiness:</strong> {{ song.speechiness }}<br>
-              <strong>Acousticness:</strong> {{ song.acousticness }}<br>
-              <strong>Instrumentalness:</strong> {{ song.instrumentalness }}<br>
-              <strong>Liveness:</strong> {{ song.liveness }}<br>
-              <strong>Valence:</strong> {{ song.valence }}<br>
-              <strong>Tempo:</strong> {{ song.tempo }}
-            </div>
+            {% endfor %}
           </div>
-          {% endfor %}
-        </div>
-      {% else %}
-        <p class="empty-state">
-          Submit your preferences to generate recommendations from the dataset.
-        </p>
-      {% endif %}
-    </div> <!-- /.results -->
-    </div> <!-- /#tab-recommend -->
-  </div> <!-- /.app -->
+        {% else %}
+          <p class="empty-state">
+            Submit your preferences to generate recommendations from the dataset.
+          </p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
 
   <script>
-    /* ─────────────────────────────────────────────────────────────────────
-       Tab navigation
-    ───────────────────────────────────────────────────────────────────── */
     function switchTab(name) {
       const panels = { explore: 'tab-explore', recommend: 'tab-recommend' };
       const btns   = { explore: 'btn-explore', recommend: 'btn-recommend' };
@@ -745,16 +721,11 @@
       });
     }
 
-    // If the page loaded with recommendations (POST result), open the
-    // Taste Profile tab automatically so the user sees their results.
     (function () {
       const hasResults = document.querySelector('.result-card');
       if (hasResults) switchTab('recommend');
     })();
 
-    /* ─────────────────────────────────────────────────────────────────────
-       Original app JS (unchanged)
-    ───────────────────────────────────────────────────────────────────── */
     function updateValue(slider) {
       slider.nextElementSibling.textContent = slider.value;
     }
@@ -769,12 +740,6 @@
       });
     });
 
-    /* ─────────────────────────────────────────────────────────────────────
-       DS4200 Visualizations
-       All five charts are rendered after fetching /api/viz-data
-    ───────────────────────────────────────────────────────────────────── */
-
-    // Shared tooltip helpers
     const _tip = document.getElementById('viz-tooltip');
     function showTip(event, html) {
       _tip.innerHTML = html;
@@ -789,7 +754,6 @@
     }
     function hideTip() { _tip.style.display = 'none'; }
 
-    // Spotify-inspired palette for genres
     const GENRE_COLORS = {
       'pop':              '#1db954',
       'hip hop':          '#e040fb',
@@ -806,28 +770,20 @@
       return GENRE_COLORS[g] || '#78909c';
     }
 
-    // ────────────────────────────────────────────────────────────────────
-    // Fetch data then render all five charts
-    // ────────────────────────────────────────────────────────────────────
+    let vizData = null;
+
     fetch('/api/viz-data')
       .then(r => r.json())
       .then(data => {
+        vizData = data;
         renderChart1(data.genre_popularity);
-        renderChart2(data.songs);
         renderChart3(data.correlation, data.numeric_cols);
+        renderChart2(data.songs);
         renderChart4(data.artist_year, data.years);
-        renderChart5(data.energy_time);
+        renderChart5((data.metric_time && data.metric_time.energy) ? data.metric_time.energy : []);
       })
       .catch(err => console.error('Viz data fetch error:', err));
 
-
-    // ════════════════════════════════════════════════════════════════════
-    // CHART 1 — Popularity Distribution by Genre  (D3.js box plot)
-    // Equivalent to: alt.Chart(df).mark_boxplot(extent='min-max')
-    //   .encode(x='genre:N', y='popularity:Q', color='genre:N')
-    //   .add_params(alt.selection_point(fields=['genre']))
-    // Interaction: click a genre box/label to isolate it; click again to reset
-    // ════════════════════════════════════════════════════════════════════
     function renderChart1(genrePopData) {
       const GENRE_ORDER = ['pop','hip hop','rock','Dance/Electronic',
                            'alternative','R&B','latin','country'];
@@ -837,7 +793,6 @@
         'R&B':'#ef5350','latin':'#26c6da','country':'#a5d6a7'
       };
 
-      // ── Compute box stats per genre ─────────────────────────────────
       const grouped = {};
       genrePopData.forEach(d => {
         const g = d.genre;
@@ -859,9 +814,8 @@
           const outliers = vals.filter(v => v < lo || v > hi);
           return { genre: g, q1, med, q3, lo, hi, outliers, n: vals.length };
         })
-        .sort((a, b) => b.med - a.med);   // sort by descending median
+        .sort((a, b) => b.med - a.med);
 
-      // ── Layout ──────────────────────────────────────────────────────
       const container = document.getElementById('chart1');
       const W  = Math.min(container.clientWidth || 760, 960);
       const H  = 360;
@@ -880,9 +834,7 @@
       const svg = d3.select('#chart1')
         .append('svg').attr('width', W).attr('height', H);
 
-      // Horizontal grid lines
       svg.append('g')
-        .attr('transform', `translate(0,0)`)
         .call(
           d3.axisLeft(ySc).ticks(6)
             .tickSize(-(W - M.left - M.right))
@@ -891,7 +843,6 @@
         .attr('transform', `translate(${M.left},0)`)
         .call(g => { g.select('.domain').remove(); g.selectAll('.tick line').attr('stroke','rgba(255,255,255,0.07)'); });
 
-      // Y axis
       svg.append('g').attr('transform', `translate(${M.left},0)`)
         .call(d3.axisLeft(ySc).ticks(6))
         .call(g => {
@@ -900,7 +851,6 @@
           g.selectAll('.tick text').attr('fill','#ccc').attr('font-size','11px');
         });
 
-      // Y axis label
       svg.append('text')
         .attr('transform','rotate(-90)')
         .attr('x', -(M.top + (H - M.top - M.bottom) / 2))
@@ -908,7 +858,6 @@
         .attr('fill','#1db954').attr('text-anchor','middle').attr('font-size','12px')
         .text('Popularity Score');
 
-      // ── One group per genre ─────────────────────────────────────────
       let selectedGenre = null;
 
       const groups = svg.selectAll('g.box-group')
@@ -917,11 +866,7 @@
         .attr('class','box-group')
         .attr('cursor','pointer')
         .on('click', (event, d) => {
-          if (selectedGenre === d.genre) {
-            selectedGenre = null;
-          } else {
-            selectedGenre = d.genre;
-          }
+          selectedGenre = (selectedGenre === d.genre) ? null : d.genre;
           updateSelection();
         })
         .on('mouseover', (event, d) => {
@@ -935,7 +880,6 @@
         .on('mousemove', moveTip)
         .on('mouseout', hideTip);
 
-      // Vertical stem (whisker line)
       groups.append('line')
         .attr('class','stem')
         .attr('x1', d => xSc(d.genre) + xSc.bandwidth() / 2)
@@ -946,7 +890,6 @@
         .attr('stroke-width', 1.5)
         .attr('stroke-dasharray','4 2');
 
-      // Whisker caps
       ['lo','hi'].forEach(end => {
         groups.append('line')
           .attr('class','cap')
@@ -958,7 +901,6 @@
           .attr('stroke-width', 1.5);
       });
 
-      // IQR box
       groups.append('rect')
         .attr('class','iqr-box')
         .attr('x', d => xSc(d.genre) + (xSc.bandwidth() - bw) / 2)
@@ -971,7 +913,6 @@
         .attr('stroke-width', 1.8)
         .attr('rx', 3);
 
-      // Median line
       groups.append('line')
         .attr('class','median-line')
         .attr('x1', d => xSc(d.genre) + (xSc.bandwidth() - bw) / 2)
@@ -981,7 +922,6 @@
         .attr('stroke','#fff')
         .attr('stroke-width', 2.5);
 
-      // Outlier dots
       groups.each(function(d) {
         d3.select(this).selectAll('circle.outlier')
           .data(d.outliers)
@@ -995,7 +935,6 @@
           .attr('stroke','none');
       });
 
-      // X axis genre labels
       svg.append('g').attr('transform', `translate(0,${H - M.bottom})`)
         .call(d3.axisBottom(xSc).tickSize(0))
         .call(g => {
@@ -1007,15 +946,7 @@
             .attr('transform', stats.length > 5 ? 'rotate(-28)' : null);
         });
 
-      // ── Selection highlight logic ───────────────────────────────────
       function updateSelection() {
-        groups.selectAll('.iqr-box, .stem, .cap, .median-line, .outlier')
-          .attr('opacity', d => {
-            if (!selectedGenre) return 1;
-            // d here is the outlier value (number) for outlier circles,
-            // or the genre object for other elements
-            return 1; // handled at group level
-          });
         groups.attr('opacity', d => {
           if (!selectedGenre) return 1;
           return d.genre === selectedGenre ? 1 : 0.1;
@@ -1023,16 +954,28 @@
       }
     }
 
+    function linearRegression(points, xAccessor, yAccessor) {
+      const n = points.length;
+      const xs = points.map(xAccessor);
+      const ys = points.map(yAccessor);
+      const meanX = d3.mean(xs);
+      const meanY = d3.mean(ys);
 
-    // ════════════════════════════════════════════════════════════════════
-    // CHART 2 — Energy vs. Danceability  (D3.js)
-    // Interaction 1: hover tooltip
-    // Interaction 2: genre filter buttons (show/hide genre)
-    // ════════════════════════════════════════════════════════════════════
+      let num = 0;
+      let den = 0;
+      for (let i = 0; i < n; i++) {
+        num += (xs[i] - meanX) * (ys[i] - meanY);
+        den += (xs[i] - meanX) * (xs[i] - meanX);
+      }
+
+      const slope = den === 0 ? 0 : num / den;
+      const intercept = meanY - slope * meanX;
+      return { slope, intercept };
+    }
+
     function renderChart2(songs) {
       const topGenres = ['pop','hip hop','rock','Dance/Electronic','alternative','R&B','latin','country'];
 
-      // Build filter row
       const filterRow = document.getElementById('scatter-filters');
       let activeGenre = null;
 
@@ -1054,51 +997,80 @@
       const container = document.getElementById('chart2');
       const W = Math.min(container.clientWidth || 720, 900);
       const H = 380;
-      const M = { top: 16, right: 130, bottom: 48, left: 55 };
+      const M = { top: 16, right: 180, bottom: 48, left: 55 };
 
-      const xSc = d3.scaleLinear().domain([0.1, 1.0]).range([M.left, W - M.right]);
+      const plotData = songs.filter(d => d.danceability > 0 && d.valence >= 0);
+
+      const xSc = d3.scaleLinear().domain([0.0, 1.0]).range([M.left, W - M.right]);
       const ySc = d3.scaleLinear().domain([0.0, 1.0]).range([H - M.bottom, M.top]);
       const rSc = d3.scaleSqrt().domain([0, 90]).range([3, 9]);
 
       const svg = d3.select('#chart2')
         .append('svg').attr('width', W).attr('height', H);
 
-      // Grid
-      svg.append('g').attr('class', 'grid')
+      svg.append('g')
         .attr('transform', `translate(0,${H - M.bottom})`)
         .call(d3.axisBottom(xSc).ticks(6).tickSize(-(H - M.top - M.bottom)).tickFormat(''))
         .call(g => g.select('.domain').remove())
         .call(g => g.selectAll('.tick line').attr('stroke', 'rgba(255,255,255,0.06)'));
 
-      svg.append('g').attr('class', 'grid')
+      svg.append('g')
         .attr('transform', `translate(${M.left},0)`)
         .call(d3.axisLeft(ySc).ticks(6).tickSize(-(W - M.left - M.right)).tickFormat(''))
         .call(g => g.select('.domain').remove())
         .call(g => g.selectAll('.tick line').attr('stroke', 'rgba(255,255,255,0.06)'));
 
-      // Axes
       svg.append('g').attr('transform', `translate(0,${H - M.bottom})`)
         .call(d3.axisBottom(xSc).ticks(6))
-        .call(g => { g.selectAll('text').attr('fill','#ccc'); g.select('.domain').attr('stroke','#555'); g.selectAll('.tick line').attr('stroke','#555'); });
+        .call(g => {
+          g.selectAll('text').attr('fill','#ccc');
+          g.select('.domain').attr('stroke','#555');
+          g.selectAll('.tick line').attr('stroke','#555');
+        });
 
       svg.append('g').attr('transform', `translate(${M.left},0)`)
         .call(d3.axisLeft(ySc).ticks(6))
-        .call(g => { g.selectAll('text').attr('fill','#ccc'); g.select('.domain').attr('stroke','#555'); g.selectAll('.tick line').attr('stroke','#555'); });
+        .call(g => {
+          g.selectAll('text').attr('fill','#ccc');
+          g.select('.domain').attr('stroke','#555');
+          g.selectAll('.tick line').attr('stroke','#555');
+        });
 
-      // Axis labels
       svg.append('text').attr('x', M.left + (W - M.left - M.right) / 2).attr('y', H - 8)
-        .attr('fill','#1db954').attr('text-anchor','middle').attr('font-size','13px').text('Danceability');
-      svg.append('text').attr('transform','rotate(-90)').attr('x', -(M.top + (H - M.top - M.bottom)/2)).attr('y', 14)
-        .attr('fill','#1db954').attr('text-anchor','middle').attr('font-size','13px').text('Energy');
+        .attr('fill','#1db954').attr('text-anchor','middle').attr('font-size','13px').text('Valence');
 
-      // Dots
+      svg.append('text').attr('transform','rotate(-90)')
+        .attr('x', -(M.top + (H - M.top - M.bottom)/2)).attr('y', 14)
+        .attr('fill','#1db954').attr('text-anchor','middle').attr('font-size','13px').text('Danceability');
+
+      const regression = linearRegression(
+        plotData,
+        d => +d.valence,
+        d => +d.danceability
+      );
+
+      const x1 = 0;
+      const x2 = 1;
+      const y1 = regression.slope * x1 + regression.intercept;
+      const y2 = regression.slope * x2 + regression.intercept;
+
+      svg.append('line')
+        .attr('x1', xSc(x1))
+        .attr('y1', ySc(y1))
+        .attr('x2', xSc(x2))
+        .attr('y2', ySc(y2))
+        .attr('stroke', '#ffffff')
+        .attr('stroke-width', 2)
+        .attr('stroke-dasharray', '6 4')
+        .attr('opacity', 0.8);
+
       const dots = svg.selectAll('circle.dot')
-        .data(songs.filter(d => d.danceability > 0 && d.energy > 0))
+        .data(plotData)
         .join('circle')
         .attr('class', 'dot')
-        .attr('cx', d => xSc(d.danceability))
-        .attr('cy', d => ySc(d.energy))
-        .attr('r',  d => rSc(d.popularity || 40))
+        .attr('cx', d => xSc(d.valence))
+        .attr('cy', d => ySc(d.danceability))
+        .attr('r', d => rSc(d.popularity || 40))
         .attr('fill', d => genreColor(topGenres.includes(d.primary_genre) ? d.primary_genre : 'Other'))
         .attr('opacity', 0.55)
         .attr('stroke', 'none')
@@ -1107,13 +1079,13 @@
           showTip(event,
             `<strong>${d.song}</strong><br>${d.artist}<br>
              <span style="color:#aaa">Genre:</span> ${d.primary_genre}<br>
+             <span style="color:#aaa">Valence:</span> ${(+d.valence).toFixed(3)}<br>
              <span style="color:#aaa">Danceability:</span> ${(+d.danceability).toFixed(3)}<br>
-             <span style="color:#aaa">Energy:</span> ${(+d.energy).toFixed(3)}<br>
              <span style="color:#aaa">Popularity:</span> ${d.popularity}`);
         })
         .on('mousemove', moveTip)
-        .on('mouseout', (event) => {
-          d3.select(event.currentTarget).attr('opacity', d => {
+        .on('mouseout', (event, d) => {
+          d3.select(event.currentTarget).attr('opacity', () => {
             if (!activeGenre) return 0.55;
             const g = topGenres.includes(d.primary_genre) ? d.primary_genre : 'Other';
             return g === activeGenre ? 0.8 : 0.08;
@@ -1121,14 +1093,37 @@
           hideTip();
         });
 
-      // Legend (right side)
       const legend = svg.append('g').attr('transform', `translate(${W - M.right + 12}, ${M.top})`);
       [...topGenres, 'Other'].forEach((g, i) => {
         legend.append('circle').attr('cx', 6).attr('cy', i * 20 + 6).attr('r', 6).attr('fill', genreColor(g));
         legend.append('text').attr('x', 16).attr('y', i * 20 + 10).attr('fill','#ccc').attr('font-size','11px').text(g);
       });
 
-      // Genre button interaction
+      const sizeLegendY = (topGenres.length + 1) * 20 + 24;
+      legend.append('text')
+        .attr('x', 0)
+        .attr('y', sizeLegendY)
+        .attr('fill', '#1db954')
+        .attr('font-size', '11px')
+        .text('Popularity');
+
+      [20, 50, 80].forEach((value, i) => {
+        const cy = sizeLegendY + 22 + i * 28;
+        legend.append('circle')
+          .attr('cx', 8)
+          .attr('cy', cy)
+          .attr('r', rSc(value))
+          .attr('fill', 'none')
+          .attr('stroke', '#ccc');
+
+        legend.append('text')
+          .attr('x', 24)
+          .attr('y', cy + 4)
+          .attr('fill', '#ccc')
+          .attr('font-size', '10px')
+          .text(value);
+      });
+
       function applyFilter(genre) {
         activeGenre = genre;
         dots.attr('opacity', d => {
@@ -1140,6 +1135,7 @@
           const g = topGenres.includes(d.primary_genre) ? d.primary_genre : 'Other';
           return g === genre ? rSc(d.popularity || 40) * 1.3 : rSc(d.popularity || 40);
         });
+
         document.querySelectorAll('.genre-btn').forEach(b => b.classList.remove('active'));
         if (!genre) {
           allBtn.classList.add('active');
@@ -1158,11 +1154,6 @@
       });
     }
 
-
-    // ════════════════════════════════════════════════════════════════════
-    // CHART 3 — Correlation Heatmap  (D3.js)
-    // Interaction: hover tooltip showing exact r value + pair label
-    // ════════════════════════════════════════════════════════════════════
     function renderChart3(corrData, numericCols) {
       const container = document.getElementById('chart3');
       const size = Math.min(container.clientWidth || 680, 680);
@@ -1172,7 +1163,6 @@
       const cellW = innerW / numericCols.length;
       const cellH = innerH / numericCols.length;
 
-      // Diverging color scale: negative → blue, zero → near-black, positive → green
       const colorSc = d3.scaleDiverging()
         .domain([-1, 0, 1])
         .interpolator(d3.interpolateRgbBasis(['#3949ab','#1a237e','#121212','#1b5e20','#1db954']));
@@ -1182,7 +1172,6 @@
 
       const g = svg.append('g').attr('transform', `translate(${M.left},${M.top})`);
 
-      // Cells
       g.selectAll('rect.cell')
         .data(corrData)
         .join('rect')
@@ -1206,7 +1195,6 @@
           hideTip();
         });
 
-      // Text labels inside cells
       g.selectAll('text.cell-label')
         .data(corrData)
         .join('text')
@@ -1219,7 +1207,6 @@
         .attr('pointer-events','none')
         .text(d => d.value.toFixed(2));
 
-      // X axis labels
       g.append('g').attr('transform', `translate(0,${innerH})`)
         .selectAll('text.xlabel')
         .data(numericCols)
@@ -1233,7 +1220,6 @@
         .attr('transform', (d,i) => `rotate(-40, ${i * cellW + cellW/2}, 14)`)
         .text(d => d);
 
-      // Y axis labels
       g.selectAll('text.ylabel')
         .data(numericCols)
         .join('text')
@@ -1245,14 +1231,13 @@
         .attr('font-size','11px')
         .text(d => d);
 
-      // Color-scale legend bar
       const legendW = Math.min(innerW * 0.7, 320);
       const legendX = (innerW - legendW) / 2;
       const legendY = innerH + 52;
       const defs = svg.append('defs');
       const grad = defs.append('linearGradient').attr('id','corr-grad').attr('x1','0%').attr('x2','100%');
       grad.append('stop').attr('offset','0%').attr('stop-color','#3949ab');
-      grad.append('stop').attr('offset','50%').attr('stop-color','#1a237e');
+      grad.append('stop').attr('offset','50%').attr('stop-color','#121212');
       grad.append('stop').attr('offset','100%').attr('stop-color','#1db954');
 
       const lg = svg.append('g').attr('transform', `translate(${M.left + legendX},${legendY})`);
@@ -1263,18 +1248,12 @@
       lg.append('text').attr('x', legendW).attr('y',24).attr('fill','#aaa').attr('font-size','11px').attr('text-anchor','end').text('+1.0');
     }
 
-
-    // ════════════════════════════════════════════════════════════════════
-    // CHART 4 — Top Artists by Year  (D3.js + year slider)
-    // Interaction: range slider triggers animated bar-chart transition
-    // ════════════════════════════════════════════════════════════════════
     function renderChart4(artistYearData, years) {
       const container = document.getElementById('chart4');
       const W = Math.min(container.clientWidth || 720, 900);
       const H = 340;
       const M = { top: 12, right: 30, bottom: 12, left: 140 };
 
-      // Group data by year
       const byYear = {};
       artistYearData.forEach(d => {
         const yr = +d.year;
@@ -1287,7 +1266,6 @@
       const xSc = d3.scaleLinear().range([M.left, W - M.right]);
       const ySc = d3.scaleBand().range([M.top, H - M.bottom]).padding(0.22);
 
-      // Gradient defs
       const defs = svg.append('defs');
       const barGrad = defs.append('linearGradient').attr('id','bar-grad').attr('x1','0%').attr('x2','100%');
       barGrad.append('stop').attr('offset','0%').attr('stop-color','#0d6e3c');
@@ -1297,7 +1275,6 @@
       const labelsG = svg.append('g');
       const valG   = svg.append('g');
 
-      // Year label
       const yearLabel = svg.append('text')
         .attr('x', W - M.right - 4).attr('y', H - M.bottom - 6)
         .attr('fill','rgba(29,185,84,0.2)').attr('font-size','62px').attr('font-weight','bold')
@@ -1311,7 +1288,6 @@
 
         yearLabel.text(year);
 
-        // Bars
         const bars = barsG.selectAll('rect.bar').data(top10, d => d.artist);
         bars.enter().append('rect').attr('class','bar')
           .attr('x', M.left).attr('y', d => ySc(d.artist))
@@ -1324,7 +1300,6 @@
           .attr('width', d => xSc(d.count) - M.left);
         bars.exit().remove();
 
-        // Artist name labels
         const nameLabels = labelsG.selectAll('text.name').data(top10, d => d.artist);
         nameLabels.enter().append('text').attr('class','name')
           .attr('x', M.left - 6).attr('y', d => ySc(d.artist) + ySc.bandwidth() / 2 + 4)
@@ -1335,7 +1310,6 @@
           .text(d => d.artist);
         nameLabels.exit().remove();
 
-        // Count labels
         const countLabels = valG.selectAll('text.count').data(top10, d => d.artist);
         countLabels.enter().append('text').attr('class','count')
           .attr('x', M.left + 6).attr('y', d => ySc(d.artist) + ySc.bandwidth() / 2 + 4)
@@ -1359,38 +1333,29 @@
       });
     }
 
+    function renderChart5(metricData) {
+      const selectEl = document.getElementById('metric-select');
+      const metricName = selectEl ? selectEl.value : 'energy';
+      const formattedTitle = metricName.charAt(0).toUpperCase() + metricName.slice(1);
 
-    // ════════════════════════════════════════════════════════════════════
-    // CHART 5 — Average Energy Over Time  (Altair / Vega-Lite)
-    // Interaction: hover nearest point for exact value tooltip
-    // ════════════════════════════════════════════════════════════════════
-    function renderChart5(energyTimeData) {
-      /*
-       * Equivalent Altair Python code:
-       *   line = alt.Chart(energy_df).mark_line(color='#1db954', strokeWidth=2.5,
-       *     point=alt.OverlayMarkDef(filled=True, color='#1db954', size=55)) \
-       *     .encode(x=alt.X('year:O'), y=alt.Y('mean_energy:Q', scale=alt.Scale(zero=False)),
-       *             tooltip=['year','mean_energy']) \
-       *     .add_params(alt.selection_point(on='mouseover', nearest=True))
-       */
       const spec = {
         "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
         "background": "transparent",
         "title": {
-          "text": "Average Track Energy Over Time (1998–2020)",
+          "text": `Average ${formattedTitle} Over Time (1998–2019)`,
           "color": "#1db954",
           "fontSize": 15,
           "anchor": "start"
         },
         "width": "container",
         "height": 300,
-        "data": { "values": energyTimeData },
+        "data": { "values": metricData },
         "layer": [
           {
             "mark": { "type": "area", "color": "#1db954", "opacity": 0.12, "line": false },
             "encoding": {
               "x": { "field": "year", "type": "ordinal" },
-              "y": { "field": "mean_energy", "type": "quantitative", "scale": { "zero": false } }
+              "y": { "field": "value", "type": "quantitative", "scale": { "zero": false } }
             }
           },
           {
@@ -1417,9 +1382,9 @@
                 }
               },
               "y": {
-                "field": "mean_energy",
+                "field": "value",
                 "type": "quantitative",
-                "title": "Average Energy",
+                "title": `Average ${formattedTitle}`,
                 "scale": { "zero": false },
                 "axis": {
                   "labelColor": "#cccccc",
@@ -1432,9 +1397,8 @@
                 "value": 0.65
               },
               "tooltip": [
-                { "field": "year",        "type": "ordinal",      "title": "Year"       },
-                { "field": "mean_energy", "type": "quantitative", "title": "Avg Energy",
-                  "format": ".4f" }
+                { "field": "year", "type": "ordinal", "title": "Year" },
+                { "field": "value", "type": "quantitative", "title": `Avg ${formattedTitle}`, "format": ".4f" }
               ]
             }
           }
@@ -1444,12 +1408,20 @@
           "axis": { "gridColor": "rgba(255,255,255,0.07)" }
         }
       };
+
       vegaEmbed('#chart5', spec, {
         actions: false,
         renderer: 'svg',
         config: { background: 'transparent' }
       });
     }
+
+    document.addEventListener('change', (event) => {
+      if (event.target && event.target.id === 'metric-select' && vizData && vizData.metric_time) {
+        const metric = event.target.value;
+        renderChart5(vizData.metric_time[metric] || []);
+      }
+    });
   </script>
 </body>
 </html>
