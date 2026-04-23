@@ -1,0 +1,1427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spotify Taste Matcher</title>
+
+  <!-- ── Visualization libraries (DS4200) ─────────────────────────────── -->
+  <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vega-lite@5"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #121212, #1db954);
+      min-height: 100vh;
+      color: #ffffff;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 32px 16px;
+    }
+
+    .app {
+      width: 100%;
+      max-width: 1150px;
+      background: rgba(0, 0, 0, 0.82);
+      border-radius: 20px;
+      padding: 32px;
+      box-shadow: 0 12px 35px rgba(0, 0, 0, 0.35);
+    }
+
+    h1 {
+      margin-top: 0;
+      margin-bottom: 10px;
+      font-size: 2.2rem;
+      text-align: center;
+      color: #1db954;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #d8d8d8;
+      margin-bottom: 28px;
+      line-height: 1.6;
+    }
+
+    .section {
+      margin-bottom: 28px;
+      padding: 20px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 14px;
+    }
+
+    .section h2 {
+      margin-top: 0;
+      margin-bottom: 16px;
+      font-size: 1.25rem;
+      color: #1db954;
+    }
+
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 18px;
+    }
+
+    .slider-group {
+      background: rgba(255, 255, 255, 0.04);
+      border-radius: 12px;
+      padding: 14px;
+    }
+
+    .slider-group label {
+      display: block;
+      font-weight: bold;
+      margin-bottom: 10px;
+      line-height: 1.4;
+    }
+
+    .slider-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: #1db954;
+    }
+
+    .slider-value {
+      min-width: 38px;
+      text-align: right;
+      font-weight: bold;
+      color: #1db954;
+    }
+
+    .genre-options {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 10px;
+      max-height: 320px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .genre-options label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255, 255, 255, 0.04);
+      padding: 10px 12px;
+      border-radius: 10px;
+      cursor: pointer;
+      text-transform: capitalize;
+      line-height: 1.3;
+    }
+
+    .helper-text {
+      margin-top: 12px;
+      font-size: 0.95rem;
+      color: #bdbdbd;
+      text-align: center;
+      line-height: 1.5;
+    }
+
+    .actions {
+      display: flex;
+      justify-content: center;
+      margin-top: 24px;
+    }
+
+    button {
+      background: #1db954;
+      color: white;
+      border: none;
+      padding: 14px 26px;
+      font-size: 1rem;
+      font-weight: bold;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: transform 0.2s ease, opacity 0.2s ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      opacity: 0.95;
+    }
+
+    .results {
+      margin-top: 30px;
+    }
+
+    .results h2 {
+      color: #1db954;
+      margin-bottom: 16px;
+    }
+
+    .empty-state {
+      text-align: center;
+      color: #cfcfcf;
+      padding: 20px 10px 5px;
+      line-height: 1.6;
+    }
+
+    .result-card {
+      background: rgba(255, 255, 255, 0.06);
+      border-radius: 14px;
+      padding: 18px;
+      margin-bottom: 16px;
+      border-left: 5px solid #1db954;
+    }
+
+    .result-card h3 {
+      margin: 0 0 10px 0;
+      color: #ffffff;
+    }
+
+    .result-meta {
+      color: #d7d7d7;
+      line-height: 1.8;
+    }
+
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 10px 0 6px 0;
+    }
+
+    .tag {
+      background: rgba(29, 185, 84, 0.18);
+      color: #b8ffd1;
+      border: 1px solid rgba(29, 185, 84, 0.45);
+      padding: 5px 10px;
+      border-radius: 999px;
+      font-size: 0.88rem;
+    }
+
+    .results-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 0;
+    }
+
+    /* ── DS4200 Visualization Styles ───────────────────────────────────── */
+
+    .viz-section {
+      margin-bottom: 28px;
+    }
+
+    .viz-section > h2 {
+      margin-bottom: 6px;
+    }
+
+    .viz-section > .viz-intro {
+      color: #bdbdbd;
+      font-size: 0.93rem;
+      margin-bottom: 20px;
+      line-height: 1.6;
+    }
+
+    .viz-card {
+      background: rgba(255, 255, 255, 0.04);
+      border-radius: 14px;
+      padding: 22px 20px 18px;
+      margin-bottom: 24px;
+    }
+
+    .viz-card h3 {
+      margin: 0 0 4px;
+      color: #1db954;
+      font-size: 1.05rem;
+    }
+
+    .viz-lib-badge {
+      display: inline-block;
+      font-size: 0.75rem;
+      background: rgba(29,185,84,0.15);
+      border: 1px solid rgba(29,185,84,0.4);
+      color: #1db954;
+      border-radius: 999px;
+      padding: 2px 10px;
+      margin-bottom: 14px;
+    }
+
+    .viz-chart-area {
+      width: 100%;
+      overflow-x: auto;
+    }
+
+    .viz-chart-area svg {
+      display: block;
+      max-width: 100%;
+    }
+
+    .vega-embed {
+      width: 100% !important;
+    }
+    .vega-embed canvas,
+    .vega-embed svg {
+      width: 100% !important;
+    }
+
+    .viz-takeaway {
+      margin: 14px 0 0;
+      padding: 12px 14px;
+      background: rgba(29,185,84,0.07);
+      border-left: 3px solid #1db954;
+      border-radius: 0 8px 8px 0;
+      font-size: 0.9rem;
+      color: #d4f7e2;
+      line-height: 1.65;
+    }
+
+    .viz-takeaway strong {
+      color: #1db954;
+    }
+
+    .year-slider-row,
+    .metric-control-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-top: 14px;
+    }
+
+    .year-slider-row label,
+    .metric-control-row label {
+      color: #bdbdbd;
+      font-size: 0.9rem;
+      white-space: nowrap;
+    }
+
+    .year-slider-row input[type="range"] {
+      flex: 1;
+      accent-color: #1db954;
+    }
+
+    .metric-control-row select {
+      background: rgba(255,255,255,0.08);
+      color: #ffffff;
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 0.9rem;
+    }
+
+    #year-display {
+      font-weight: bold;
+      color: #1db954;
+      min-width: 42px;
+      text-align: right;
+    }
+
+    .genre-filter-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin-bottom: 14px;
+    }
+
+    .genre-btn {
+      font-size: 0.78rem;
+      padding: 4px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.2);
+      background: rgba(255,255,255,0.07);
+      color: #ccc;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .genre-btn.active {
+      background: rgba(29,185,84,0.25);
+      border-color: #1db954;
+      color: #fff;
+    }
+
+    #viz-tooltip {
+      position: fixed;
+      background: rgba(10,10,10,0.92);
+      color: #fff;
+      padding: 9px 13px;
+      border-radius: 9px;
+      font-size: 12.5px;
+      pointer-events: none;
+      display: none;
+      border: 1px solid #1db954;
+      z-index: 9999;
+      max-width: 230px;
+      line-height: 1.6;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    }
+
+    .findings-box {
+      background: rgba(29,185,84,0.06);
+      border: 1px solid rgba(29,185,84,0.25);
+      border-radius: 12px;
+      padding: 18px 20px;
+      margin-top: 8px;
+      font-size: 0.93rem;
+      color: #d9f5e7;
+      line-height: 1.7;
+    }
+
+    .findings-box h4 {
+      margin: 0 0 10px;
+      color: #1db954;
+      font-size: 1rem;
+    }
+
+    .tab-bar {
+      display: flex;
+      gap: 6px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 14px;
+      padding: 6px;
+      margin-bottom: 28px;
+      position: sticky;
+      top: 12px;
+      z-index: 100;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+
+    .tab-btn {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 11px 18px;
+      border: none;
+      border-radius: 10px;
+      background: transparent;
+      color: #999;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+      letter-spacing: 0.01em;
+    }
+
+    .tab-btn:hover:not(.active) {
+      background: rgba(255, 255, 255, 0.07);
+      color: #ddd;
+      transform: none;
+      opacity: 1;
+    }
+
+    .tab-btn.active {
+      background: #1db954;
+      color: #000;
+      box-shadow: 0 3px 14px rgba(29, 185, 84, 0.4);
+    }
+
+    .tab-btn .tab-icon {
+      font-size: 1.15rem;
+      line-height: 1;
+    }
+
+    .tab-panel {
+      display: block;
+    }
+
+    .tab-panel.hidden {
+      display: none;
+    }
+
+    @media (max-width: 640px) {
+      .app {
+        padding: 20px;
+      }
+
+      h1 {
+        font-size: 1.75rem;
+      }
+
+      .genre-options {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .tab-btn {
+        font-size: 0.82rem;
+        padding: 10px 8px;
+      }
+
+      .tab-btn .tab-icon {
+        display: none;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .genre-options {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="viz-tooltip"></div>
+
+  <div class="app">
+    <h1>Spotify Taste Matcher</h1>
+    <p class="subtitle">
+      Set your music preferences across audio features, choose up to three genres,
+      and generate recommendations based on your similarity score.
+    </p>
+
+    <nav class="tab-bar" role="tablist">
+      <button class="tab-btn active" id="btn-explore" role="tab"
+              aria-selected="true" aria-controls="tab-explore"
+              onclick="switchTab('explore')">
+        <span class="tab-icon"></span> Exploring the Dataset
+      </button>
+      <button class="tab-btn" id="btn-recommend" role="tab"
+              aria-selected="false" aria-controls="tab-recommend"
+              onclick="switchTab('recommend')">
+        <span class="tab-icon"></span> Your Taste Profile
+      </button>
+    </nav>
+
+    <div id="tab-explore" class="tab-panel" role="tabpanel">
+      <div class="section viz-section">
+        <h2>Exploring the Dataset</h2>
+        <p class="viz-intro">
+          The five visualizations below reveal patterns in 2,000 Spotify tracks spanning
+          1998–2019. Use the interactive controls to dig deeper — hover over data points
+          for details, click genres to isolate them, or drag the year slider to watch
+          the top-artists chart update in real time. After exploring the dataset, feel free to
+          try the 'Your Taste Profile' tab to get a tailored list of songs that match
+          your preferences.
+        </p>
+
+        <div class="viz-card">
+          <h3>1 · Distribution of Popularity by Genre</h3>
+          <span class="viz-lib-badge">D3.js box plot · Interaction: click genre box to isolate</span>
+          <div class="viz-chart-area" id="chart1"></div>
+          <p class="viz-takeaway">
+            <strong>Takeaway:</strong> Latin and rock lead in median popularity (both ~70),
+            followed closely by hip-hop and R&B (~65–68). Pop sits mid-pack despite being
+            the most represented genre in the dataset, and it has the widest spread — outliers
+            extend all the way down to near 0, reflecting the many obscure tracks in the catalog
+            alongside mainstream hits. Dance/Electronic and country have the lowest medians
+            (~55), suggesting they are underrepresented in the chart-hit tier of this dataset.
+            <em>Click any box to isolate that genre; click again to reset.</em>
+          </p>
+        </div>
+
+        <div class="viz-card">
+          <h3>2 · Feature Correlation Heatmap</h3>
+          <span class="viz-lib-badge">D3.js · Interaction: hover to see exact correlation value</span>
+          <div class="viz-chart-area" id="chart3"></div>
+          <p class="viz-takeaway">
+            <strong>Takeaway:</strong> This heatmap helps decide which features are most worth comparing in a pairwise plot.
+            Since energy and danceability show only a very mild relationship, it makes more sense to use a stronger pair later.
+            Here, danceability and valence stand out as a better choice for the scatter plot because they show a clearer positive trend.
+          </p>
+        </div>
+
+        <div class="viz-card">
+          <h3>3 · Danceability vs. Valence</h3>
+          <span class="viz-lib-badge">D3.js · Interaction: hover tooltip + genre filter buttons</span>
+          <div class="genre-filter-row" id="scatter-filters"></div>
+          <div class="viz-chart-area" id="chart2"></div>
+          <p class="viz-takeaway">
+            <strong>Takeaway:</strong> Danceability and valence show a clearer positive relationship than energy and danceability,
+            so this pairing better highlights how more upbeat songs also tend to be more danceable. The fitted regression line
+            makes the overall trend easier to see, and circle size represents popularity, with the size legend shown on the right.
+          </p>
+        </div>
+
+        <div class="viz-card">
+          <h3>4 · Top 10 Artists by Track Count per Year</h3>
+          <span class="viz-lib-badge">D3.js · Interaction: year slider animates bar chart</span>
+          <div class="viz-chart-area" id="chart4"></div>
+          <div class="year-slider-row">
+            <label for="year-slider">Year:</label>
+            <input type="range" id="year-slider" min="1998" max="2019" step="1" value="2010">
+            <span id="year-display">2010</span>
+          </div>
+          <p class="viz-takeaway">
+            <strong>Takeaway:</strong> Dataset coverage is uneven across years. Early 2000s
+            charts are dominated by a handful of pop mega-acts (Destiny's Child, Britney Spears,
+            Eminem). By the 2010s the roster diversifies — Drake and Taylor Swift appear
+            repeatedly but never as overwhelmingly as early pop monopolies. Drag the slider
+            to trace any artist's rise and fall across the two-decade window.
+          </p>
+        </div>
+
+        <div class="viz-card">
+          <h3>5 · Average Audio Metric Over Time (1998–2019)</h3>
+          <span class="viz-lib-badge">Altair / Vega-Lite · Interaction: choose a metric + hover for exact value</span>
+          <div class="metric-control-row">
+            <label for="metric-select">Metric:</label>
+            <select id="metric-select">
+              <option value="energy">Energy</option>
+              <option value="danceability">Danceability</option>
+              <option value="valence">Valence</option>
+              <option value="acousticness">Acousticness</option>
+            </select>
+          </div>
+          <div class="viz-chart-area" id="chart5"></div>
+          <p class="viz-takeaway">
+            <strong>Takeaway:</strong> This chart is interactive so you can switch between different metrics rather than focusing only on energy.
+            That makes it easier to compare whether the main pattern over time is specific to energy or also appears in related features like
+            danceability, valence, or acousticness.
+          </p>
+        </div>
+
+        <div class="findings-box">
+          <h4>Summary of Findings</h4>
+          Pop and hip-hop together account for over 85% of the dataset, yet latin and rock
+          tracks actually score higher median popularity — suggesting those genres punch above
+          their weight in chart performance despite smaller representation. The correlation
+          heatmap is useful for selecting better pairwise comparisons, since some feature pairs
+          such as energy and danceability are only weakly related, while danceability and valence
+          provide a clearer trend. The interactive metric selector in the final chart also avoids
+          overemphasizing energy alone and lets viewers compare multiple audio attributes over time.
+        </div>
+      </div>
+    </div>
+
+    <div id="tab-recommend" class="tab-panel hidden" role="tabpanel">
+      <form method="POST">
+        <div class="section">
+          <h2>Your Taste Profile</h2>
+          <div class="feature-grid">
+            {% for feature in feature_columns %}
+            <div class="slider-group">
+              <label for="{{ feature }}">{{ display_questions[feature] }}</label>
+              <div class="slider-row">
+                <input
+                  type="range"
+                  id="{{ feature }}"
+                  name="{{ feature }}"
+                  min="0"
+                  max="10"
+                  step="1"
+                  value="{{ current_values[feature] }}"
+                  oninput="updateValue(this)"
+                >
+                <span class="slider-value">{{ current_values[feature] }}</span>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div class="section">
+          <h2>Select Up to 3 Genres</h2>
+          <div class="genre-options">
+            {% for genre in genres %}
+            <label>
+              <input
+                type="checkbox"
+                name="genres"
+                value="{{ genre }}"
+                {% if genre in selected_genres %}checked{% endif %}
+              >
+              {{ genre }}
+            </label>
+            {% endfor %}
+          </div>
+          <p class="helper-text">
+            The recommender adds a genre bonus when a song matches one of your selected genres.
+          </p>
+        </div>
+
+        <div class="actions">
+          <button type="submit">Get Recommendations</button>
+        </div>
+      </form>
+
+      <div class="results">
+        <h2>Top Matching Tracks</h2>
+
+        {% if recommendations %}
+          <div class="results-grid">
+            {% for song in recommendations %}
+            <div class="result-card">
+              <h3>{{ loop.index }}. {{ song.song }}</h3>
+
+              <div class="tag-row">
+                <span class="tag">{{ song.genre }}</span>
+                <span class="tag">Match {{ '%.4f'|format(song.match_score) }}</span>
+                <span class="tag">Year {{ song.year }}</span>
+                <span class="tag">
+                  {% if song.explicit == 1 %}
+                    Explicit
+                  {% else %}
+                    Clean
+                  {% endif %}
+                </span>
+              </div>
+
+              <div class="result-meta">
+                <strong>Artist:</strong> {{ song.artist }}<br>
+                <strong>Genre:</strong> {{ song.genre }}<br>
+                <strong>Year:</strong> {{ song.year }}<br>
+                <strong>Explicit:</strong>
+                {% if song.explicit == 1 %}
+                  Yes
+                {% else %}
+                  No
+                {% endif %}
+                <br>
+                <strong>Match Score:</strong> {{ '%.4f'|format(song.match_score) }}<br>
+                <strong>Popularity:</strong> {{ song.popularity }}<br>
+                <strong>Duration (ms):</strong> {{ song.duration_ms }}<br>
+                <strong>Danceability:</strong> {{ song.danceability }}<br>
+                <strong>Energy:</strong> {{ song.energy }}<br>
+                <strong>Loudness:</strong> {{ song.loudness }}<br>
+                <strong>Speechiness:</strong> {{ song.speechiness }}<br>
+                <strong>Acousticness:</strong> {{ song.acousticness }}<br>
+                <strong>Instrumentalness:</strong> {{ song.instrumentalness }}<br>
+                <strong>Liveness:</strong> {{ song.liveness }}<br>
+                <strong>Valence:</strong> {{ song.valence }}<br>
+                <strong>Tempo:</strong> {{ song.tempo }}
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p class="empty-state">
+            Submit your preferences to generate recommendations from the dataset.
+          </p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function switchTab(name) {
+      const panels = { explore: 'tab-explore', recommend: 'tab-recommend' };
+      const btns   = { explore: 'btn-explore', recommend: 'btn-recommend' };
+
+      Object.keys(panels).forEach(key => {
+        const panel = document.getElementById(panels[key]);
+        const btn   = document.getElementById(btns[key]);
+        if (key === name) {
+          panel.classList.remove('hidden');
+          btn.classList.add('active');
+          btn.setAttribute('aria-selected', 'true');
+        } else {
+          panel.classList.add('hidden');
+          btn.classList.remove('active');
+          btn.setAttribute('aria-selected', 'false');
+        }
+      });
+    }
+
+    (function () {
+      const hasResults = document.querySelector('.result-card');
+      if (hasResults) switchTab('recommend');
+    })();
+
+    function updateValue(slider) {
+      slider.nextElementSibling.textContent = slider.value;
+    }
+
+    document.querySelectorAll('input[name="genres"]').forEach((checkbox) => {
+      checkbox.addEventListener('change', () => {
+        const checked = document.querySelectorAll('input[name="genres"]:checked');
+        if (checked.length > 3) {
+          checkbox.checked = false;
+          alert('Please select no more than 3 genres.');
+        }
+      });
+    });
+
+    const _tip = document.getElementById('viz-tooltip');
+    function showTip(event, html) {
+      _tip.innerHTML = html;
+      _tip.style.display = 'block';
+      moveTip(event);
+    }
+    function moveTip(event) {
+      const x = event.clientX + 14;
+      const y = event.clientY - 10;
+      _tip.style.left = Math.min(x, window.innerWidth - 240) + 'px';
+      _tip.style.top  = Math.max(y, 4) + 'px';
+    }
+    function hideTip() { _tip.style.display = 'none'; }
+
+    const GENRE_COLORS = {
+      'pop':              '#1db954',
+      'hip hop':          '#e040fb',
+      'rock':             '#ff7043',
+      'Dance/Electronic': '#00b0ff',
+      'alternative':      '#ffca28',
+      'R&B':              '#ef5350',
+      'latin':            '#26c6da',
+      'country':          '#a5d6a7',
+      'Other':            '#78909c'
+    };
+
+    function genreColor(g) {
+      return GENRE_COLORS[g] || '#78909c';
+    }
+
+    let vizData = null;
+
+    fetch('/api/viz-data')
+      .then(r => r.json())
+      .then(data => {
+        vizData = data;
+        renderChart1(data.genre_popularity);
+        renderChart3(data.correlation, data.numeric_cols);
+        renderChart2(data.songs);
+        renderChart4(data.artist_year, data.years);
+        renderChart5((data.metric_time && data.metric_time.energy) ? data.metric_time.energy : []);
+      })
+      .catch(err => console.error('Viz data fetch error:', err));
+
+    function renderChart1(genrePopData) {
+      const GENRE_ORDER = ['pop','hip hop','rock','Dance/Electronic',
+                           'alternative','R&B','latin','country'];
+      const COLORS = {
+        'pop':'#1db954','hip hop':'#e040fb','rock':'#ff7043',
+        'Dance/Electronic':'#00b0ff','alternative':'#ffca28',
+        'R&B':'#ef5350','latin':'#26c6da','country':'#a5d6a7'
+      };
+
+      const grouped = {};
+      genrePopData.forEach(d => {
+        const g = d.genre;
+        if (!GENRE_ORDER.includes(g)) return;
+        if (!grouped[g]) grouped[g] = [];
+        grouped[g].push(+d.popularity);
+      });
+
+      const stats = GENRE_ORDER
+        .filter(g => grouped[g] && grouped[g].length > 4)
+        .map(g => {
+          const vals = grouped[g].sort(d3.ascending);
+          const q1  = d3.quantile(vals, 0.25);
+          const med = d3.quantile(vals, 0.5);
+          const q3  = d3.quantile(vals, 0.75);
+          const iqr = q3 - q1;
+          const lo  = d3.max([d3.min(vals), q1 - 1.5 * iqr]);
+          const hi  = d3.min([d3.max(vals), q3 + 1.5 * iqr]);
+          const outliers = vals.filter(v => v < lo || v > hi);
+          return { genre: g, q1, med, q3, lo, hi, outliers, n: vals.length };
+        })
+        .sort((a, b) => b.med - a.med);
+
+      const container = document.getElementById('chart1');
+      const W  = Math.min(container.clientWidth || 760, 960);
+      const H  = 360;
+      const M  = { top: 18, right: 24, bottom: 56, left: 48 };
+      const bw = Math.min(44, (W - M.left - M.right) / stats.length - 14);
+
+      const xSc = d3.scaleBand()
+        .domain(stats.map(d => d.genre))
+        .range([M.left, W - M.right])
+        .padding(0.35);
+
+      const ySc = d3.scaleLinear()
+        .domain([0, 92])
+        .range([H - M.bottom, M.top]);
+
+      const svg = d3.select('#chart1')
+        .append('svg').attr('width', W).attr('height', H);
+
+      svg.append('g')
+        .call(
+          d3.axisLeft(ySc).ticks(6)
+            .tickSize(-(W - M.left - M.right))
+            .tickFormat('')
+        )
+        .attr('transform', `translate(${M.left},0)`)
+        .call(g => { g.select('.domain').remove(); g.selectAll('.tick line').attr('stroke','rgba(255,255,255,0.07)'); });
+
+      svg.append('g').attr('transform', `translate(${M.left},0)`)
+        .call(d3.axisLeft(ySc).ticks(6))
+        .call(g => {
+          g.select('.domain').attr('stroke','#444');
+          g.selectAll('.tick line').attr('stroke','#444');
+          g.selectAll('.tick text').attr('fill','#ccc').attr('font-size','11px');
+        });
+
+      svg.append('text')
+        .attr('transform','rotate(-90)')
+        .attr('x', -(M.top + (H - M.top - M.bottom) / 2))
+        .attr('y', 13)
+        .attr('fill','#1db954').attr('text-anchor','middle').attr('font-size','12px')
+        .text('Popularity Score');
+
+      let selectedGenre = null;
+
+      const groups = svg.selectAll('g.box-group')
+        .data(stats)
+        .join('g')
+        .attr('class','box-group')
+        .attr('cursor','pointer')
+        .on('click', (event, d) => {
+          selectedGenre = (selectedGenre === d.genre) ? null : d.genre;
+          updateSelection();
+        })
+        .on('mouseover', (event, d) => {
+          showTip(event,
+            `<strong>${d.genre}</strong><br>
+             <span style="color:#aaa">Median:</span> ${d.med.toFixed(1)}<br>
+             <span style="color:#aaa">IQR:</span> ${d.q1.toFixed(1)} – ${d.q3.toFixed(1)}<br>
+             <span style="color:#aaa">Whiskers:</span> ${d.lo.toFixed(0)} – ${d.hi.toFixed(0)}<br>
+             <span style="color:#aaa">n =</span> ${d.n}`);
+        })
+        .on('mousemove', moveTip)
+        .on('mouseout', hideTip);
+
+      groups.append('line')
+        .attr('class','stem')
+        .attr('x1', d => xSc(d.genre) + xSc.bandwidth() / 2)
+        .attr('x2', d => xSc(d.genre) + xSc.bandwidth() / 2)
+        .attr('y1', d => ySc(d.lo))
+        .attr('y2', d => ySc(d.hi))
+        .attr('stroke', d => COLORS[d.genre])
+        .attr('stroke-width', 1.5)
+        .attr('stroke-dasharray','4 2');
+
+      ['lo','hi'].forEach(end => {
+        groups.append('line')
+          .attr('class','cap')
+          .attr('x1', d => xSc(d.genre) + xSc.bandwidth() / 2 - bw * 0.3)
+          .attr('x2', d => xSc(d.genre) + xSc.bandwidth() / 2 + bw * 0.3)
+          .attr('y1', d => ySc(d[end]))
+          .attr('y2', d => ySc(d[end]))
+          .attr('stroke', d => COLORS[d.genre])
+          .attr('stroke-width', 1.5);
+      });
+
+      groups.append('rect')
+        .attr('class','iqr-box')
+        .attr('x', d => xSc(d.genre) + (xSc.bandwidth() - bw) / 2)
+        .attr('y', d => ySc(d.q3))
+        .attr('width', bw)
+        .attr('height', d => Math.max(2, ySc(d.q1) - ySc(d.q3)))
+        .attr('fill', d => COLORS[d.genre])
+        .attr('fill-opacity', 0.28)
+        .attr('stroke', d => COLORS[d.genre])
+        .attr('stroke-width', 1.8)
+        .attr('rx', 3);
+
+      groups.append('line')
+        .attr('class','median-line')
+        .attr('x1', d => xSc(d.genre) + (xSc.bandwidth() - bw) / 2)
+        .attr('x2', d => xSc(d.genre) + (xSc.bandwidth() + bw) / 2)
+        .attr('y1', d => ySc(d.med))
+        .attr('y2', d => ySc(d.med))
+        .attr('stroke','#fff')
+        .attr('stroke-width', 2.5);
+
+      groups.each(function(d) {
+        d3.select(this).selectAll('circle.outlier')
+          .data(d.outliers)
+          .join('circle')
+          .attr('class','outlier')
+          .attr('cx', xSc(d.genre) + xSc.bandwidth() / 2)
+          .attr('cy', v => ySc(v))
+          .attr('r', 2.5)
+          .attr('fill', COLORS[d.genre])
+          .attr('fill-opacity', 0.5)
+          .attr('stroke','none');
+      });
+
+      svg.append('g').attr('transform', `translate(0,${H - M.bottom})`)
+        .call(d3.axisBottom(xSc).tickSize(0))
+        .call(g => {
+          g.select('.domain').attr('stroke','#444');
+          g.selectAll('.tick text')
+            .attr('fill','#ccc').attr('font-size','11px')
+            .attr('dy','1.2em')
+            .attr('text-anchor', stats.length > 5 ? 'end' : 'middle')
+            .attr('transform', stats.length > 5 ? 'rotate(-28)' : null);
+        });
+
+      function updateSelection() {
+        groups.attr('opacity', d => {
+          if (!selectedGenre) return 1;
+          return d.genre === selectedGenre ? 1 : 0.1;
+        });
+      }
+    }
+
+    function linearRegression(points, xAccessor, yAccessor) {
+      const n = points.length;
+      const xs = points.map(xAccessor);
+      const ys = points.map(yAccessor);
+      const meanX = d3.mean(xs);
+      const meanY = d3.mean(ys);
+
+      let num = 0;
+      let den = 0;
+      for (let i = 0; i < n; i++) {
+        num += (xs[i] - meanX) * (ys[i] - meanY);
+        den += (xs[i] - meanX) * (xs[i] - meanX);
+      }
+
+      const slope = den === 0 ? 0 : num / den;
+      const intercept = meanY - slope * meanX;
+      return { slope, intercept };
+    }
+
+    function renderChart2(songs) {
+      const topGenres = ['pop','hip hop','rock','Dance/Electronic','alternative','R&B','latin','country'];
+
+      const filterRow = document.getElementById('scatter-filters');
+      let activeGenre = null;
+
+      const allBtn = document.createElement('button');
+      allBtn.textContent = 'All';
+      allBtn.className = 'genre-btn active';
+      allBtn.type = 'button';
+      filterRow.appendChild(allBtn);
+
+      topGenres.forEach(g => {
+        const btn = document.createElement('button');
+        btn.textContent = g;
+        btn.className = 'genre-btn';
+        btn.type = 'button';
+        btn.style.borderColor = genreColor(g);
+        filterRow.appendChild(btn);
+      });
+
+      const container = document.getElementById('chart2');
+      const W = Math.min(container.clientWidth || 720, 900);
+      const H = 380;
+      const M = { top: 16, right: 180, bottom: 48, left: 55 };
+
+      const plotData = songs.filter(d => d.danceability > 0 && d.valence >= 0);
+
+      const xSc = d3.scaleLinear().domain([0.0, 1.0]).range([M.left, W - M.right]);
+      const ySc = d3.scaleLinear().domain([0.0, 1.0]).range([H - M.bottom, M.top]);
+      const rSc = d3.scaleSqrt().domain([0, 90]).range([3, 9]);
+
+      const svg = d3.select('#chart2')
+        .append('svg').attr('width', W).attr('height', H);
+
+      svg.append('g')
+        .attr('transform', `translate(0,${H - M.bottom})`)
+        .call(d3.axisBottom(xSc).ticks(6).tickSize(-(H - M.top - M.bottom)).tickFormat(''))
+        .call(g => g.select('.domain').remove())
+        .call(g => g.selectAll('.tick line').attr('stroke', 'rgba(255,255,255,0.06)'));
+
+      svg.append('g')
+        .attr('transform', `translate(${M.left},0)`)
+        .call(d3.axisLeft(ySc).ticks(6).tickSize(-(W - M.left - M.right)).tickFormat(''))
+        .call(g => g.select('.domain').remove())
+        .call(g => g.selectAll('.tick line').attr('stroke', 'rgba(255,255,255,0.06)'));
+
+      svg.append('g').attr('transform', `translate(0,${H - M.bottom})`)
+        .call(d3.axisBottom(xSc).ticks(6))
+        .call(g => {
+          g.selectAll('text').attr('fill','#ccc');
+          g.select('.domain').attr('stroke','#555');
+          g.selectAll('.tick line').attr('stroke','#555');
+        });
+
+      svg.append('g').attr('transform', `translate(${M.left},0)`)
+        .call(d3.axisLeft(ySc).ticks(6))
+        .call(g => {
+          g.selectAll('text').attr('fill','#ccc');
+          g.select('.domain').attr('stroke','#555');
+          g.selectAll('.tick line').attr('stroke','#555');
+        });
+
+      svg.append('text').attr('x', M.left + (W - M.left - M.right) / 2).attr('y', H - 8)
+        .attr('fill','#1db954').attr('text-anchor','middle').attr('font-size','13px').text('Valence');
+
+      svg.append('text').attr('transform','rotate(-90)')
+        .attr('x', -(M.top + (H - M.top - M.bottom)/2)).attr('y', 14)
+        .attr('fill','#1db954').attr('text-anchor','middle').attr('font-size','13px').text('Danceability');
+
+      const regression = linearRegression(
+        plotData,
+        d => +d.valence,
+        d => +d.danceability
+      );
+
+      const x1 = 0;
+      const x2 = 1;
+      const y1 = regression.slope * x1 + regression.intercept;
+      const y2 = regression.slope * x2 + regression.intercept;
+
+      svg.append('line')
+        .attr('x1', xSc(x1))
+        .attr('y1', ySc(y1))
+        .attr('x2', xSc(x2))
+        .attr('y2', ySc(y2))
+        .attr('stroke', '#ffffff')
+        .attr('stroke-width', 2)
+        .attr('stroke-dasharray', '6 4')
+        .attr('opacity', 0.8);
+
+      const dots = svg.selectAll('circle.dot')
+        .data(plotData)
+        .join('circle')
+        .attr('class', 'dot')
+        .attr('cx', d => xSc(d.valence))
+        .attr('cy', d => ySc(d.danceability))
+        .attr('r', d => rSc(d.popularity || 40))
+        .attr('fill', d => genreColor(topGenres.includes(d.primary_genre) ? d.primary_genre : 'Other'))
+        .attr('opacity', 0.55)
+        .attr('stroke', 'none')
+        .on('mouseover', (event, d) => {
+          d3.select(event.currentTarget).attr('opacity', 1).attr('stroke','#fff').attr('stroke-width', 1.5);
+          showTip(event,
+            `<strong>${d.song}</strong><br>${d.artist}<br>
+             <span style="color:#aaa">Genre:</span> ${d.primary_genre}<br>
+             <span style="color:#aaa">Valence:</span> ${(+d.valence).toFixed(3)}<br>
+             <span style="color:#aaa">Danceability:</span> ${(+d.danceability).toFixed(3)}<br>
+             <span style="color:#aaa">Popularity:</span> ${d.popularity}`);
+        })
+        .on('mousemove', moveTip)
+        .on('mouseout', (event, d) => {
+          d3.select(event.currentTarget).attr('opacity', () => {
+            if (!activeGenre) return 0.55;
+            const g = topGenres.includes(d.primary_genre) ? d.primary_genre : 'Other';
+            return g === activeGenre ? 0.8 : 0.08;
+          }).attr('stroke','none');
+          hideTip();
+        });
+
+      const legend = svg.append('g').attr('transform', `translate(${W - M.right + 12}, ${M.top})`);
+      [...topGenres, 'Other'].forEach((g, i) => {
+        legend.append('circle').attr('cx', 6).attr('cy', i * 20 + 6).attr('r', 6).attr('fill', genreColor(g));
+        legend.append('text').attr('x', 16).attr('y', i * 20 + 10).attr('fill','#ccc').attr('font-size','11px').text(g);
+      });
+
+      const sizeLegendY = (topGenres.length + 1) * 20 + 24;
+      legend.append('text')
+        .attr('x', 0)
+        .attr('y', sizeLegendY)
+        .attr('fill', '#1db954')
+        .attr('font-size', '11px')
+        .text('Popularity');
+
+      [20, 50, 80].forEach((value, i) => {
+        const cy = sizeLegendY + 22 + i * 28;
+        legend.append('circle')
+          .attr('cx', 8)
+          .attr('cy', cy)
+          .attr('r', rSc(value))
+          .attr('fill', 'none')
+          .attr('stroke', '#ccc');
+
+        legend.append('text')
+          .attr('x', 24)
+          .attr('y', cy + 4)
+          .attr('fill', '#ccc')
+          .attr('font-size', '10px')
+          .text(value);
+      });
+
+      function applyFilter(genre) {
+        activeGenre = genre;
+        dots.attr('opacity', d => {
+          if (!genre) return 0.55;
+          const g = topGenres.includes(d.primary_genre) ? d.primary_genre : 'Other';
+          return g === genre ? 0.85 : 0.06;
+        }).attr('r', d => {
+          if (!genre) return rSc(d.popularity || 40);
+          const g = topGenres.includes(d.primary_genre) ? d.primary_genre : 'Other';
+          return g === genre ? rSc(d.popularity || 40) * 1.3 : rSc(d.popularity || 40);
+        });
+
+        document.querySelectorAll('.genre-btn').forEach(b => b.classList.remove('active'));
+        if (!genre) {
+          allBtn.classList.add('active');
+        } else {
+          Array.from(document.querySelectorAll('.genre-btn'))
+            .find(b => b.textContent === genre)?.classList.add('active');
+        }
+      }
+
+      allBtn.addEventListener('click', () => applyFilter(null));
+      document.querySelectorAll('.genre-btn:not(:first-child)').forEach(btn => {
+        btn.addEventListener('click', () => {
+          if (activeGenre === btn.textContent) applyFilter(null);
+          else applyFilter(btn.textContent);
+        });
+      });
+    }
+
+    function renderChart3(corrData, numericCols) {
+      const container = document.getElementById('chart3');
+      const size = Math.min(container.clientWidth || 680, 680);
+      const M = { top: 10, right: 20, bottom: 80, left: 100 };
+      const innerW = size - M.left - M.right;
+      const innerH = size - M.top  - M.bottom;
+      const cellW = innerW / numericCols.length;
+      const cellH = innerH / numericCols.length;
+
+      const colorSc = d3.scaleDiverging()
+        .domain([-1, 0, 1])
+        .interpolator(d3.interpolateRgbBasis(['#3949ab','#1a237e','#121212','#1b5e20','#1db954']));
+
+      const svg = d3.select('#chart3')
+        .append('svg').attr('width', size).attr('height', size);
+
+      const g = svg.append('g').attr('transform', `translate(${M.left},${M.top})`);
+
+      g.selectAll('rect.cell')
+        .data(corrData)
+        .join('rect')
+        .attr('class', 'cell')
+        .attr('x', d => numericCols.indexOf(d.col) * cellW)
+        .attr('y', d => numericCols.indexOf(d.row) * cellH)
+        .attr('width',  cellW - 1.5)
+        .attr('height', cellH - 1.5)
+        .attr('rx', 3)
+        .attr('fill', d => colorSc(d.value))
+        .attr('opacity', 0.92)
+        .on('mouseover', (event, d) => {
+          d3.select(event.currentTarget).attr('opacity', 1).attr('stroke','#fff').attr('stroke-width', 1.5);
+          showTip(event,
+            `<strong>${d.row}</strong> × <strong>${d.col}</strong><br>
+             r = <span style="color:${d.value >= 0 ? '#1db954':'#ef5350'};font-weight:bold">${d.value.toFixed(3)}</span>`);
+        })
+        .on('mousemove', moveTip)
+        .on('mouseout', (event) => {
+          d3.select(event.currentTarget).attr('opacity', 0.92).attr('stroke','none');
+          hideTip();
+        });
+
+      g.selectAll('text.cell-label')
+        .data(corrData)
+        .join('text')
+        .attr('class','cell-label')
+        .attr('x', d => numericCols.indexOf(d.col) * cellW + cellW / 2 - 0.75)
+        .attr('y', d => numericCols.indexOf(d.row) * cellH + cellH / 2 - 0.75 + 4)
+        .attr('text-anchor','middle')
+        .attr('font-size', Math.max(8, cellW * 0.22) + 'px')
+        .attr('fill', d => Math.abs(d.value) > 0.45 ? '#fff' : '#aaa')
+        .attr('pointer-events','none')
+        .text(d => d.value.toFixed(2));
+
+      g.append('g').attr('transform', `translate(0,${innerH})`)
+        .selectAll('text.xlabel')
+        .data(numericCols)
+        .join('text')
+        .attr('class','xlabel')
+        .attr('x', (d,i) => i * cellW + cellW / 2)
+        .attr('y', 14)
+        .attr('fill','#ccc')
+        .attr('text-anchor','end')
+        .attr('font-size','11px')
+        .attr('transform', (d,i) => `rotate(-40, ${i * cellW + cellW/2}, 14)`)
+        .text(d => d);
+
+      g.selectAll('text.ylabel')
+        .data(numericCols)
+        .join('text')
+        .attr('class','ylabel')
+        .attr('x', -8)
+        .attr('y', (d,i) => i * cellH + cellH / 2 + 4)
+        .attr('fill','#ccc')
+        .attr('text-anchor','end')
+        .attr('font-size','11px')
+        .text(d => d);
+
+      const legendW = Math.min(innerW * 0.7, 320);
+      const legendX = (innerW - legendW) / 2;
+      const legendY = innerH + 52;
+      const defs = svg.append('defs');
+      const grad = defs.append('linearGradient').attr('id','corr-grad').attr('x1','0%').attr('x2','100%');
+      grad.append('stop').attr('offset','0%').attr('stop-color','#3949ab');
+      grad.append('stop').attr('offset','50%').attr('stop-color','#121212');
+      grad.append('stop').attr('offset','100%').attr('stop-color','#1db954');
+
+      const lg = svg.append('g').attr('transform', `translate(${M.left + legendX},${legendY})`);
+      lg.append('rect').attr('width', legendW).attr('height', 10).attr('rx', 3)
+        .attr('fill','url(#corr-grad)');
+      lg.append('text').attr('x',0).attr('y',24).attr('fill','#aaa').attr('font-size','11px').text('-1.0');
+      lg.append('text').attr('x', legendW/2).attr('y',24).attr('fill','#aaa').attr('font-size','11px').attr('text-anchor','middle').text('0');
+      lg.append('text').attr('x', legendW).attr('y',24).attr('fill','#aaa').attr('font-size','11px').attr('text-anchor','end').text('+1.0');
+    }
+
+    function renderChart4(artistYearData, years) {
+      const container = document.getElementById('chart4');
+      const W = Math.min(container.clientWidth || 720, 900);
+      const H = 340;
+      const M = { top: 12, right: 30, bottom: 12, left: 140 };
+
+      const byYear = {};
+      artistYearData.forEach(d => {
+        const yr = +d.year;
+        if (!byYear[yr]) byYear[yr] = [];
+        byYear[yr].push({ artist: d.artist, count: +d.count });
+      });
+
+      const svg = d3.select('#chart4').append('svg').attr('width', W).attr('height', H);
+
+      const xSc = d3.scaleLinear().range([M.left, W - M.right]);
+      const ySc = d3.scaleBand().range([M.top, H - M.bottom]).padding(0.22);
+
+      const defs = svg.append('defs');
+      const barGrad = defs.append('linearGradient').attr('id','bar-grad').attr('x1','0%').attr('x2','100%');
+      barGrad.append('stop').attr('offset','0%').attr('stop-color','#0d6e3c');
+      barGrad.append('stop').attr('offset','100%').attr('stop-color','#1db954');
+
+      const barsG  = svg.append('g');
+      const labelsG = svg.append('g');
+      const valG   = svg.append('g');
+
+      const yearLabel = svg.append('text')
+        .attr('x', W - M.right - 4).attr('y', H - M.bottom - 6)
+        .attr('fill','rgba(29,185,84,0.2)').attr('font-size','62px').attr('font-weight','bold')
+        .attr('text-anchor','end').attr('font-family','Arial');
+
+      function draw(year, animate) {
+        const top10 = (byYear[year] || []).slice(0, 10);
+        const maxCount = d3.max(top10, d => d.count) || 1;
+        xSc.domain([0, maxCount + 1]);
+        ySc.domain(top10.map(d => d.artist));
+
+        yearLabel.text(year);
+
+        const bars = barsG.selectAll('rect.bar').data(top10, d => d.artist);
+        bars.enter().append('rect').attr('class','bar')
+          .attr('x', M.left).attr('y', d => ySc(d.artist))
+          .attr('height', ySc.bandwidth()).attr('width', 0)
+          .attr('fill','url(#bar-grad)').attr('rx', 4)
+          .merge(bars)
+          .transition().duration(animate ? 420 : 0).ease(d3.easeCubicOut)
+          .attr('y', d => ySc(d.artist))
+          .attr('height', ySc.bandwidth())
+          .attr('width', d => xSc(d.count) - M.left);
+        bars.exit().remove();
+
+        const nameLabels = labelsG.selectAll('text.name').data(top10, d => d.artist);
+        nameLabels.enter().append('text').attr('class','name')
+          .attr('x', M.left - 6).attr('y', d => ySc(d.artist) + ySc.bandwidth() / 2 + 4)
+          .attr('fill','#ccc').attr('font-size','12px').attr('text-anchor','end')
+          .merge(nameLabels)
+          .transition().duration(animate ? 420 : 0)
+          .attr('y', d => ySc(d.artist) + ySc.bandwidth() / 2 + 4)
+          .text(d => d.artist);
+        nameLabels.exit().remove();
+
+        const countLabels = valG.selectAll('text.count').data(top10, d => d.artist);
+        countLabels.enter().append('text').attr('class','count')
+          .attr('x', M.left + 6).attr('y', d => ySc(d.artist) + ySc.bandwidth() / 2 + 4)
+          .attr('fill','#fff').attr('font-size','11px').attr('font-weight','bold')
+          .merge(countLabels)
+          .transition().duration(animate ? 420 : 0)
+          .attr('y', d => ySc(d.artist) + ySc.bandwidth() / 2 + 4)
+          .attr('x', d => xSc(d.count) - 6)
+          .text(d => d.count);
+        countLabels.exit().remove();
+      }
+
+      draw(2010, false);
+
+      const slider = document.getElementById('year-slider');
+      const display = document.getElementById('year-display');
+      slider.addEventListener('input', () => {
+        const yr = +slider.value;
+        display.textContent = yr;
+        draw(yr, true);
+      });
+    }
+
+    function renderChart5(metricData) {
+      const selectEl = document.getElementById('metric-select');
+      const metricName = selectEl ? selectEl.value : 'energy';
+      const formattedTitle = metricName.charAt(0).toUpperCase() + metricName.slice(1);
+
+      const spec = {
+        "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+        "background": "transparent",
+        "title": {
+          "text": `Average ${formattedTitle} Over Time (1998–2019)`,
+          "color": "#1db954",
+          "fontSize": 15,
+          "anchor": "start"
+        },
+        "width": "container",
+        "height": 300,
+        "data": { "values": metricData },
+        "layer": [
+          {
+            "mark": { "type": "area", "color": "#1db954", "opacity": 0.12, "line": false },
+            "encoding": {
+              "x": { "field": "year", "type": "ordinal" },
+              "y": { "field": "value", "type": "quantitative", "scale": { "zero": false } }
+            }
+          },
+          {
+            "params": [{
+              "name": "hoverPt",
+              "select": { "type": "point", "on": "mouseover", "nearest": true }
+            }],
+            "mark": {
+              "type": "line",
+              "color": "#1db954",
+              "strokeWidth": 2.5,
+              "point": { "filled": true, "color": "#1db954", "size": 55 }
+            },
+            "encoding": {
+              "x": {
+                "field": "year",
+                "type": "ordinal",
+                "title": "Year",
+                "axis": {
+                  "labelColor": "#cccccc",
+                  "titleColor": "#1db954",
+                  "labelAngle": -30,
+                  "gridColor": "rgba(255,255,255,0.07)"
+                }
+              },
+              "y": {
+                "field": "value",
+                "type": "quantitative",
+                "title": `Average ${formattedTitle}`,
+                "scale": { "zero": false },
+                "axis": {
+                  "labelColor": "#cccccc",
+                  "titleColor": "#1db954",
+                  "gridColor": "rgba(255,255,255,0.07)"
+                }
+              },
+              "opacity": {
+                "condition": { "param": "hoverPt", "value": 1 },
+                "value": 0.65
+              },
+              "tooltip": [
+                { "field": "year", "type": "ordinal", "title": "Year" },
+                { "field": "value", "type": "quantitative", "title": `Avg ${formattedTitle}`, "format": ".4f" }
+              ]
+            }
+          }
+        ],
+        "config": {
+          "view": { "stroke": null },
+          "axis": { "gridColor": "rgba(255,255,255,0.07)" }
+        }
+      };
+
+      vegaEmbed('#chart5', spec, {
+        actions: false,
+        renderer: 'svg',
+        config: { background: 'transparent' }
+      });
+    }
+
+    document.addEventListener('change', (event) => {
+      if (event.target && event.target.id === 'metric-select' && vizData && vizData.metric_time) {
+        const metric = event.target.value;
+        renderChart5(vizData.metric_time[metric] || []);
+      }
+    });
+  </script>
+</body>
+</html>
